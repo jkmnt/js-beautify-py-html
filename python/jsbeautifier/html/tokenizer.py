@@ -26,73 +26,97 @@
 #   SOFTWARE.
 # */
 
-var BaseTokenizer = require('../core/tokenizer').Tokenizer;
-var BASETOKEN = require('../core/tokenizer').TOKEN;
-var Directives = require('../core/directives').Directives;
-var TemplatablePattern = require('../core/templatablepattern').TemplatablePattern;
-var Pattern = require('../core/pattern').Pattern;
+from dataclasses import dataclass
+from ..core.inputscanner import InputScanner
+from ..core.tokenizer import TokenTypes as BaseTokenTypes
+from ..core.tokenizer import Tokenizer as BaseTokenizer
+from ..core.tokenizer import TokenizerPatterns as BaseTokenizerPatterns
+from ..core.directives import Directives
 
-var TOKEN = {
-  TAG_OPEN: 'TK_TAG_OPEN',
-  TAG_CLOSE: 'TK_TAG_CLOSE',
-  CONTROL_FLOW_OPEN: 'TK_CONTROL_FLOW_OPEN',
-  CONTROL_FLOW_CLOSE: 'TK_CONTROL_FLOW_CLOSE',
-  ATTRIBUTE: 'TK_ATTRIBUTE',
-  EQUALS: 'TK_EQUALS',
-  VALUE: 'TK_VALUE',
-  COMMENT: 'TK_COMMENT',
-  TEXT: 'TK_TEXT',
-  UNKNOWN: 'TK_UNKNOWN',
-  START: BASETOKEN.START,
-  RAW: BASETOKEN.RAW,
-  EOF: BASETOKEN.EOF
-};
+from ..core.pattern import Pattern
+from ..core.templatablepattern import TemplatablePattern
 
-var directives_core = new Directives(/<\!--/, /-->/);
 
-var Tokenizer = function(input_string, options) {
-  BaseTokenizer.call(this, input_string, options);
-  self._current_tag_name = '';
+class TokenTypes(BaseTokenTypes):
+  TAG_OPEN= 'TK_TAG_OPEN'
+  TAG_CLOSE= 'TK_TAG_CLOSE'
+  CONTROL_FLOW_OPEN= 'TK_CONTROL_FLOW_OPEN'
+  CONTROL_FLOW_CLOSE= 'TK_CONTROL_FLOW_CLOSE'
+  ATTRIBUTE= 'TK_ATTRIBUTE'
+  EQUALS= 'TK_EQUALS'
+  VALUE= 'TK_VALUE'
+  COMMENT= 'TK_COMMENT'
+  TEXT= 'TK_TEXT'
+  UNKNOWN= 'TK_UNKNOWN'
 
-  # Words end at whitespace or when a tag starts
-  # if we are indenting handlebars, they are considered tags
-  var templatable_reader = new TemplatablePattern(self._input).read_options(self._options);
-  var pattern_reader = new Pattern(self._input);
+TOKEN = TokenTypes()
 
-  self.__patterns = {
-    word: templatable_reader.until(/[\n\r\t <]/),
-    word_control_flow_close_excluded: templatable_reader.until(/[\n\r\t <}]/),
-    single_quote: templatable_reader.until_after(/'/),
-    double_quote: templatable_reader.until_after(/"/),
-    attribute: templatable_reader.until(/[\n\r\t =>]|\/>/),
-    element_name: templatable_reader.until(/[\n\r\t >\/]/),
+#
+# directives_core = Directives(/<\!--/, /-->/);
+directives_core = Directives(r'<\!--', r'/-->')
 
-    angular_control_flow_start: pattern_reader.matching(/\@[a-zA-Z]+[^({]*[({]/),
-    handlebars_comment: pattern_reader.starting_with(/{{!--/).until_after(/--}}/),
-    handlebars: pattern_reader.starting_with(/{{/).until_after(/}}/),
-    handlebars_open: pattern_reader.until(/[\n\r\t }]/),
-    handlebars_raw_close: pattern_reader.until(/}}/),
-    comment: pattern_reader.starting_with(/<!--/).until_after(/-->/),
-    cdata: pattern_reader.starting_with(/<!\[CDATA\[/).until_after(/]]>/),
-    # https:#en.wikipedia.org/wiki/Conditional_comment
-    conditional_comment: pattern_reader.starting_with(/<!\[/).until_after(/]>/),
-    processing: pattern_reader.starting_with(/<\?/).until_after(/\?>/)
-  };
+@dataclass
+class TokenizerPatterns:
+    word: Pattern
+    word_control_flow_close_excluded: Pattern
+    single_quote: Pattern
+    double_quote: Pattern
+    attribute: Pattern
+    element_name: Pattern
+    angular_control_flow_start: Pattern
+    handlebars_comment: Pattern
+    handlebars: Pattern
+    handlebars_open: Pattern
+    handlebars_raw_close: Pattern
+    comment: Pattern
+    cdata: Pattern
+      # https:#en.wikipedia.org/wiki/Conditional_comment
+    conditional_comment: Pattern
+    processing: Pattern
 
-  if (self._options.indent_handlebars) {
-    self.__patterns.word = self.__patterns.word.exclude('handlebars');
-    self.__patterns.word_control_flow_close_excluded = self.__patterns.word_control_flow_close_excluded.exclude('handlebars');
-  }
 
-  self._unformatted_content_delimiter = null;
+class Tokenizer(BaseTokenizer):
+  def __init__(self, input_string, options):
+    super().__init__(input_string, options)
+    self._current_tag_name = ''
 
-  if (self._options.unformatted_content_delimiter) {
-    var literal_regexp = self._input.get_literal_regexp(self._options.unformatted_content_delimiter);
-    self.__patterns.unformatted_content_delimiter =
-      pattern_reader.matching(literal_regexp)
-      .until_after(literal_regexp);
-  }
-};
+    # Words end at whitespace or when a tag starts
+    # if we are indenting handlebars, they are considered tags
+    templatable_reader = TemplatablePattern(self._input).read_options(self._options)
+    pattern_reader = Pattern(self._input)
+
+    self.__patterns = TokenizerPatterns(
+      word= templatable_reader.until(/[\n\r\t <]/),
+      word_control_flow_close_excluded= templatable_reader.until(/[\n\r\t <}]/),
+      single_quote= templatable_reader.until_after(/'/),
+      double_quote= templatable_reader.until_after(/"/),
+      attribute= templatable_reader.until(/[\n\r\t =>]|\/>/),
+      element_name= templatable_reader.until(/[\n\r\t >\/]/),
+      angular_control_flow_start= pattern_reader.matching(/\@[a-zA-Z]+[^({]*[({]/),
+      handlebars_comment= pattern_reader.starting_with(/{{!--/).until_after(/--}}/),
+      handlebars= pattern_reader.starting_with(/{{/).until_after(/}}/),
+      handlebars_open= pattern_reader.until(/[\n\r\t }]/),
+      handlebars_raw_close= pattern_reader.until(/}}/),
+      comment= pattern_reader.starting_with(/<!--/).until_after(/-->/),
+      cdata= pattern_reader.starting_with(/<!\[CDATA\[/).until_after(/]]>/),
+      conditional_comment= pattern_reader.starting_with(/<!\[/).until_after(/]>/),
+      processing= pattern_reader.starting_with(/<\?/).until_after(/\?>/),
+      )
+
+    if (self._options.indent_handlebars) {
+      self.__patterns.word = self.__patterns.word.exclude('handlebars');
+      self.__patterns.word_control_flow_close_excluded = self.__patterns.word_control_flow_close_excluded.exclude('handlebars');
+    }
+
+    self._unformatted_content_delimiter = null;
+
+    if (self._options.unformatted_content_delimiter) {
+      var literal_regexp = self._input.get_literal_regexp(self._options.unformatted_content_delimiter);
+      self.__patterns.unformatted_content_delimiter =
+        pattern_reader.matching(literal_regexp)
+        .until_after(literal_regexp);
+    }
+
 Tokenizer.prototype = new BaseTokenizer();
 
 Tokenizer.prototype._is_comment = function(current_token) { # jshint unused:false
