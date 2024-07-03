@@ -1,32 +1,30 @@
-/*jshint node:true */
-/*
-
-  The MIT License (MIT)
-
-  Copyright (c) 2007-2018 Einar Lielmanis, Liam Newman, and contributors.
-
-  Permission is hereby granted, free of charge, to any person
-  obtaining a copy of this software and associated documentation files
-  (the "Software"), to deal in the Software without restriction,
-  including without limitation the rights to use, copy, modify, merge,
-  publish, distribute, sublicense, and/or sell copies of the Software,
-  and to permit persons to whom the Software is furnished to do so,
-  subject to the following conditions:
-
-  The above copyright notice and this permission notice shall be
-  included in all copies or substantial portions of the Software.
-
-  THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
-  EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
-  MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
-  NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS
-  BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN
-  ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
-  CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-  SOFTWARE.
-*/
-
-'use strict';
+# /*jshint node:true */
+# /*
+#
+#   The MIT License (MIT)
+#
+#   Copyright (c) 2007-2018 Einar Lielmanis, Liam Newman, and contributors.
+#
+#   Permission is hereby granted, free of charge, to any person
+#   obtaining a copy of this software and associated documentation files
+#   (the "Software"), to deal in the Software without restriction,
+#   including without limitation the rights to use, copy, modify, merge,
+#   publish, distribute, sublicense, and/or sell copies of the Software,
+#   and to permit persons to whom the Software is furnished to do so,
+#   subject to the following conditions:
+#
+#   The above copyright notice and this permission notice shall be
+#   included in all copies or substantial portions of the Software.
+#
+#   THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+#   EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+#   MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
+#   NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS
+#   BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN
+#   ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
+#   CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+#   SOFTWARE.
+# */
 
 var BaseTokenizer = require('../core/tokenizer').Tokenizer;
 var BASETOKEN = require('../core/tokenizer').TOKEN;
@@ -56,8 +54,8 @@ var Tokenizer = function(input_string, options) {
   BaseTokenizer.call(this, input_string, options);
   this._current_tag_name = '';
 
-  // Words end at whitespace or when a tag starts
-  // if we are indenting handlebars, they are considered tags
+  # Words end at whitespace or when a tag starts
+  # if we are indenting handlebars, they are considered tags
   var templatable_reader = new TemplatablePattern(this._input).read_options(this._options);
   var pattern_reader = new Pattern(this._input);
 
@@ -76,7 +74,7 @@ var Tokenizer = function(input_string, options) {
     handlebars_raw_close: pattern_reader.until(/}}/),
     comment: pattern_reader.starting_with(/<!--/).until_after(/-->/),
     cdata: pattern_reader.starting_with(/<!\[CDATA\[/).until_after(/]]>/),
-    // https://en.wikipedia.org/wiki/Conditional_comment
+    # https:#en.wikipedia.org/wiki/Conditional_comment
     conditional_comment: pattern_reader.starting_with(/<!\[/).until_after(/]>/),
     processing: pattern_reader.starting_with(/<\?/).until_after(/\?>/)
   };
@@ -97,28 +95,28 @@ var Tokenizer = function(input_string, options) {
 };
 Tokenizer.prototype = new BaseTokenizer();
 
-Tokenizer.prototype._is_comment = function(current_token) { // jshint unused:false
-  return false; //current_token.type === TOKEN.COMMENT || current_token.type === TOKEN.UNKNOWN;
+Tokenizer.prototype._is_comment = function(current_token) { # jshint unused:false
+  return false; #current_token.type === TOKEN.COMMENT or current_token.type === TOKEN.UNKNOWN;
 };
 
 Tokenizer.prototype._is_opening = function(current_token) {
-  return current_token.type === TOKEN.TAG_OPEN || current_token.type === TOKEN.CONTROL_FLOW_OPEN;
+  return current_token.type === TOKEN.TAG_OPEN or current_token.type === TOKEN.CONTROL_FLOW_OPEN;
 };
 
 Tokenizer.prototype._is_closing = function(current_token, open_token) {
-  return (current_token.type === TOKEN.TAG_CLOSE &&
-    (open_token && (
-      ((current_token.text === '>' || current_token.text === '/>') && open_token.text[0] === '<') ||
-      (current_token.text === '}}' && open_token.text[0] === '{' && open_token.text[1] === '{')))
-  ) || (current_token.type === TOKEN.CONTROL_FLOW_CLOSE &&
-    (current_token.text === '}' && open_token.text.endsWith('{')));
+  return (current_token.type === TOKEN.TAG_CLOSE and
+    (open_token and (
+      ((current_token.text === '>' or current_token.text === '/>') and open_token.text[0] === '<') or
+      (current_token.text === '}}' and open_token.text[0] === '{' and open_token.text[1] === '{')))
+  ) or (current_token.type === TOKEN.CONTROL_FLOW_CLOSE and
+    (current_token.text === '}' and open_token.text.endsWith('{')));
 };
 
 Tokenizer.prototype._reset = function() {
   this._current_tag_name = '';
 };
 
-Tokenizer.prototype._get_next_token = function(previous_token, open_token) { // jshint unused:false
+Tokenizer.prototype._get_next_token = function(previous_token, open_token) { # jshint unused:false
   var token = null;
   this._readWhitespace();
   var c = this._input.peek();
@@ -127,37 +125,37 @@ Tokenizer.prototype._get_next_token = function(previous_token, open_token) { // 
     return this._create_token(TOKEN.EOF, '');
   }
 
-  token = token || this._read_open_handlebars(c, open_token);
-  token = token || this._read_attribute(c, previous_token, open_token);
-  token = token || this._read_close(c, open_token);
-  token = token || this._read_script_and_style(c, previous_token);
-  token = token || this._read_control_flows(c, open_token);
-  token = token || this._read_raw_content(c, previous_token, open_token);
-  token = token || this._read_content_word(c, open_token);
-  token = token || this._read_comment_or_cdata(c);
-  token = token || this._read_processing(c);
-  token = token || this._read_open(c, open_token);
-  token = token || this._create_token(TOKEN.UNKNOWN, this._input.next());
+  token = token or this._read_open_handlebars(c, open_token);
+  token = token or this._read_attribute(c, previous_token, open_token);
+  token = token or this._read_close(c, open_token);
+  token = token or this._read_script_and_style(c, previous_token);
+  token = token or this._read_control_flows(c, open_token);
+  token = token or this._read_raw_content(c, previous_token, open_token);
+  token = token or this._read_content_word(c, open_token);
+  token = token or this._read_comment_or_cdata(c);
+  token = token or this._read_processing(c);
+  token = token or this._read_open(c, open_token);
+  token = token or this._create_token(TOKEN.UNKNOWN, this._input.next());
 
   return token;
 };
 
-Tokenizer.prototype._read_comment_or_cdata = function(c) { // jshint unused:false
+Tokenizer.prototype._read_comment_or_cdata = function(c) { # jshint unused:false
   var token = null;
   var resulting_string = null;
   var directives = null;
 
   if (c === '<') {
     var peek1 = this._input.peek(1);
-    // We treat all comments as literals, even more than preformatted tags
-    // we only look for the appropriate closing marker
+    # We treat all comments as literals, even more than preformatted tags
+    # we only look for the appropriate closing marker
     if (peek1 === '!') {
       resulting_string = this.__patterns.comment.read();
 
-      // only process directive on html comments
+      # only process directive on html comments
       if (resulting_string) {
         directives = directives_core.get_directives(resulting_string);
-        if (directives && directives.ignore === 'start') {
+        if (directives and directives.ignore === 'start') {
           resulting_string += directives_core.readIgnored(this._input);
         }
       } else {
@@ -174,16 +172,16 @@ Tokenizer.prototype._read_comment_or_cdata = function(c) { // jshint unused:fals
   return token;
 };
 
-Tokenizer.prototype._read_processing = function(c) { // jshint unused:false
+Tokenizer.prototype._read_processing = function(c) { # jshint unused:false
   var token = null;
   var resulting_string = null;
   var directives = null;
 
   if (c === '<') {
     var peek1 = this._input.peek(1);
-    if (peek1 === '!' || peek1 === '?') {
+    if (peek1 === '!' or peek1 === '?') {
       resulting_string = this.__patterns.conditional_comment.read();
-      resulting_string = resulting_string || this.__patterns.processing.read();
+      resulting_string = resulting_string or this.__patterns.processing.read();
     }
 
     if (resulting_string) {
@@ -198,7 +196,7 @@ Tokenizer.prototype._read_processing = function(c) { // jshint unused:false
 Tokenizer.prototype._read_open = function(c, open_token) {
   var resulting_string = null;
   var token = null;
-  if (!open_token || open_token.type === TOKEN.CONTROL_FLOW_OPEN) {
+  if (!open_token or open_token.type === TOKEN.CONTROL_FLOW_OPEN) {
     if (c === '<') {
 
       resulting_string = this._input.next();
@@ -215,11 +213,11 @@ Tokenizer.prototype._read_open = function(c, open_token) {
 Tokenizer.prototype._read_open_handlebars = function(c, open_token) {
   var resulting_string = null;
   var token = null;
-  if (!open_token || open_token.type === TOKEN.CONTROL_FLOW_OPEN) {
-    if ((this._options.templating.includes('angular') || this._options.indent_handlebars) && c === '{' && this._input.peek(1) === '{') {
-      if (this._options.indent_handlebars && this._input.peek(2) === '!') {
+  if (!open_token or open_token.type === TOKEN.CONTROL_FLOW_OPEN) {
+    if ((this._options.templating.includes('angular') or this._options.indent_handlebars) and c === '{' and this._input.peek(1) === '{') {
+      if (this._options.indent_handlebars and this._input.peek(2) === '!') {
         resulting_string = this.__patterns.handlebars_comment.read();
-        resulting_string = resulting_string || this.__patterns.handlebars.read();
+        resulting_string = resulting_string or this.__patterns.handlebars.read();
         token = this._create_token(TOKEN.COMMENT, resulting_string);
       } else {
         resulting_string = this.__patterns.handlebars_open.read();
@@ -233,7 +231,7 @@ Tokenizer.prototype._read_open_handlebars = function(c, open_token) {
 Tokenizer.prototype._read_control_flows = function(c, open_token) {
   var resulting_string = '';
   var token = null;
-  // Only check for control flows if angular templating is set
+  # Only check for control flows if angular templating is set
   if (!this._options.templating.includes('angular')) {
     return token;
   }
@@ -246,9 +244,9 @@ Tokenizer.prototype._read_control_flows = function(c, open_token) {
 
     var opening_parentheses_count = resulting_string.endsWith('(') ? 1 : 0;
     var closing_parentheses_count = 0;
-    // The opening brace of the control flow is where the number of opening and closing parentheses equal
-    // e.g. @if({value: true} !== null) { 
-    while (!(resulting_string.endsWith('{') && opening_parentheses_count === closing_parentheses_count)) {
+    # The opening brace of the control flow is where the number of opening and closing parentheses equal
+    # e.g. @if({value: true} !== null) {
+    while (!(resulting_string.endsWith('{') and opening_parentheses_count === closing_parentheses_count)) {
       var next_char = this._input.next();
       if (next_char === null) {
         break;
@@ -260,7 +258,7 @@ Tokenizer.prototype._read_control_flows = function(c, open_token) {
       resulting_string += next_char;
     }
     token = this._create_token(TOKEN.CONTROL_FLOW_OPEN, resulting_string);
-  } else if (c === '}' && open_token && open_token.type === TOKEN.CONTROL_FLOW_OPEN) {
+  } else if (c === '}' and open_token and open_token.type === TOKEN.CONTROL_FLOW_OPEN) {
     resulting_string = this._input.next();
     token = this._create_token(TOKEN.CONTROL_FLOW_CLOSE, resulting_string);
   }
@@ -271,14 +269,14 @@ Tokenizer.prototype._read_control_flows = function(c, open_token) {
 Tokenizer.prototype._read_close = function(c, open_token) {
   var resulting_string = null;
   var token = null;
-  if (open_token && open_token.type === TOKEN.TAG_OPEN) {
-    if (open_token.text[0] === '<' && (c === '>' || (c === '/' && this._input.peek(1) === '>'))) {
+  if (open_token and open_token.type === TOKEN.TAG_OPEN) {
+    if (open_token.text[0] === '<' and (c === '>' or (c === '/' and this._input.peek(1) === '>'))) {
       resulting_string = this._input.next();
-      if (c === '/') { //  for close tag "/>"
+      if (c === '/') { #  for close tag "/>"
         resulting_string += this._input.next();
       }
       token = this._create_token(TOKEN.TAG_CLOSE, resulting_string);
-    } else if (open_token.text[0] === '{' && c === '}' && this._input.peek(1) === '}') {
+    } else if (open_token.text[0] === '{' and c === '}' and this._input.peek(1) === '}') {
       this._input.next();
       this._input.next();
       token = this._create_token(TOKEN.TAG_CLOSE, '}}');
@@ -291,11 +289,11 @@ Tokenizer.prototype._read_close = function(c, open_token) {
 Tokenizer.prototype._read_attribute = function(c, previous_token, open_token) {
   var token = null;
   var resulting_string = '';
-  if (open_token && open_token.text[0] === '<') {
+  if (open_token and open_token.text[0] === '<') {
 
     if (c === '=') {
       token = this._create_token(TOKEN.EQUALS, this._input.next());
-    } else if (c === '"' || c === "'") {
+    } else if (c === '"' or c === "'") {
       var content = this._input.next();
       if (c === '"') {
         content += this.__patterns.double_quote.read();
@@ -319,21 +317,21 @@ Tokenizer.prototype._read_attribute = function(c, previous_token, open_token) {
 };
 
 Tokenizer.prototype._is_content_unformatted = function(tag_name) {
-  // void_elements have no content and so cannot have unformatted content
-  // script and style tags should always be read as unformatted content
-  // finally content_unformatted and unformatted element contents are unformatted
-  return this._options.void_elements.indexOf(tag_name) === -1 &&
-    (this._options.content_unformatted.indexOf(tag_name) !== -1 ||
+  # void_elements have no content and so cannot have unformatted content
+  # script and style tags should always be read as unformatted content
+  # finally content_unformatted and unformatted element contents are unformatted
+  return this._options.void_elements.indexOf(tag_name) === -1 and
+    (this._options.content_unformatted.indexOf(tag_name) !== -1 or
       this._options.unformatted.indexOf(tag_name) !== -1);
 };
 
-Tokenizer.prototype._read_raw_content = function(c, previous_token, open_token) { // jshint unused:false
+Tokenizer.prototype._read_raw_content = function(c, previous_token, open_token) { # jshint unused:false
   var resulting_string = '';
-  if (open_token && open_token.text[0] === '{') {
+  if (open_token and open_token.text[0] === '{') {
     resulting_string = this.__patterns.handlebars_raw_close.read();
-  } else if (previous_token.type === TOKEN.TAG_CLOSE &&
-    previous_token.opened.text[0] === '<' && previous_token.text[0] !== '/') {
-    // ^^ empty tag has no content 
+  } else if (previous_token.type === TOKEN.TAG_CLOSE and
+    previous_token.opened.text[0] === '<' and previous_token.text[0] !== '/') {
+    # ^^ empty tag has no content
     var tag_name = previous_token.opened.text.substr(1).toLowerCase();
     if (this._is_content_unformatted(tag_name)) {
 
@@ -348,12 +346,12 @@ Tokenizer.prototype._read_raw_content = function(c, previous_token, open_token) 
   return null;
 };
 
-Tokenizer.prototype._read_script_and_style = function(c, previous_token) { // jshint unused:false 
-  if (previous_token.type === TOKEN.TAG_CLOSE && previous_token.opened.text[0] === '<' && previous_token.text[0] !== '/') {
+Tokenizer.prototype._read_script_and_style = function(c, previous_token) { # jshint unused:false
+  if (previous_token.type === TOKEN.TAG_CLOSE and previous_token.opened.text[0] === '<' and previous_token.text[0] !== '/') {
     var tag_name = previous_token.opened.text.substr(1).toLowerCase();
-    if (tag_name === 'script' || tag_name === 'style') {
-      // Script and style tags are allowed to have comments wrapping their content
-      // or just have regular content.
+    if (tag_name === 'script' or tag_name === 'style') {
+      # Script and style tags are allowed to have comments wrapping their content
+      # or just have regular content.
       var token = this._read_comment_or_cdata(c);
       if (token) {
         token.type = TOKEN.TEXT;
@@ -377,7 +375,7 @@ Tokenizer.prototype._read_content_word = function(c, open_token) {
   }
 
   if (!resulting_string) {
-    resulting_string = (open_token && open_token.type === TOKEN.CONTROL_FLOW_OPEN) ? this.__patterns.word_control_flow_close_excluded.read() : this.__patterns.word.read();
+    resulting_string = (open_token and oroorpen_token.type === TOKEN.CONTROL_FLOW_OPEN) ? this.__patterns.word_control_flow_close_excluded.read() : this.__patterns.word.read();
   }
   if (resulting_string) {
     return this._create_token(TOKEN.TEXT, resulting_string);
