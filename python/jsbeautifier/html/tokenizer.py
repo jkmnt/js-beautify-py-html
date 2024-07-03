@@ -262,9 +262,9 @@ class Tokenizer(BaseTokenizer):
       resulting_string = '';
       token = None;
       # Only check for control flows if angular templating is set
-      if (not self._options.templating.includes('angular')) {
+      if (not self._options.templating.includes('angular')):
         return token;
-      }
+
 
       if (c == '@'):
         resulting_string = self.__patterns.angular_control_flow_start.read();
@@ -317,7 +317,7 @@ class Tokenizer(BaseTokenizer):
     def _read_attribute(self, c, previous_token, open_token):
       token = None;
       resulting_string = '';
-      if (open_token and open_token.text[0] == '<')
+      if (open_token and open_token.text[0] == '<'):
 
         if (c == '='):
           token = self._create_token(TOKEN.EQUALS, self._input.next());
@@ -346,66 +346,63 @@ class Tokenizer(BaseTokenizer):
       # void_elements have no content and so cannot have unformatted content
       # script and style tags should always be read as unformatted content
       # finally content_unformatted and unformatted element contents are unformatted
-      return self._options.void_elements.indexOf(tag_name) == -1 and
-        (self._options.content_unformatted.indexOf(tag_name) !== -1 or
-          self._options.unformatted.indexOf(tag_name) !== -1);
+      return self._options.void_elements.indexOf(tag_name) == -1 and        (self._options.content_unformatted.indexOf(tag_name) != -1 or          self._options.unformatted.indexOf(tag_name) != -1)
 
 
     def _read_raw_content(self, c, previous_token, open_token): # jshint unused:false
-      var resulting_string = '';
-      if (open_token and open_token.text[0] == '{') {
+      resulting_string = '';
+      if (open_token and open_token.text[0] == '{'):
         resulting_string = self.__patterns.handlebars_raw_close.read();
-      } else if (previous_token.type == TOKEN.TAG_CLOSE and
-        previous_token.opened.text[0] == '<' and previous_token.text[0] !== '/') {
+      elif (previous_token.type == TOKEN.TAG_CLOSE and        previous_token.opened.text[0] == '<' and previous_token.text[0] != '/'):
         # ^^ empty tag has no content
-        var tag_name = previous_token.opened.text.substr(1).toLowerCase();
-        if (self._is_content_unformatted(tag_name)) {
-
+        tag_name = previous_token.opened.text.substr(1).toLowerCase()
+        if (self._is_content_unformatted(tag_name)):
           resulting_string = self._input.readUntil(new RegExp('</' + tag_name + '[\\n\\r\\t ]*?>', 'ig'));
-        }
-      }
 
-      if (resulting_string) {
+
+      if (resulting_string):
         return self._create_token(TOKEN.TEXT, resulting_string);
-      }
+
 
       return None;
 
 
     def _read_script_and_style(self, c, previous_token): # jshint unused:false
-      if (previous_token.type == TOKEN.TAG_CLOSE and previous_token.opened.text[0] == '<' and previous_token.text[0] !== '/') {
-        var tag_name = previous_token.opened.text.substr(1).toLowerCase();
-        if (tag_name == 'script' or tag_name == 'style') {
+      if (previous_token.type == TOKEN.TAG_CLOSE and previous_token.opened.text[0] == '<' and previous_token.text[0] != '/'):
+        tag_name = previous_token.opened.text.substr(1).toLowerCase();
+        if (tag_name == 'script' or tag_name == 'style'):
           # Script and style tags are allowed to have comments wrapping their content
           # or just have regular content.
-          var token = self._read_comment_or_cdata(c);
-          if (token) {
+          token = self._read_comment_or_cdata(c);
+          if (token):
             token.type = TOKEN.TEXT;
             return token;
-          }
-          var resulting_string = self._input.readUntil(new RegExp('</' + tag_name + '[\\n\\r\\t ]*?>', 'ig'));
-          if (resulting_string) {
+
+          # XXX: disabled for now
+          # resulting_string = self._input.readUntil(new RegExp('</' + tag_name + '[\\n\\r\\t ]*?>', 'ig'));
+          resulting_string = ''
+          if (resulting_string):
             return self._create_token(TOKEN.TEXT, resulting_string);
-          }
-        }
-      }
+
+
+
       return None;
 
 
     def _read_content_word(self, c, open_token):
-      var resulting_string = '';
-      if (self._options.unformatted_content_delimiter) {
-        if (c == self._options.unformatted_content_delimiter[0]) {
+      resulting_string = '';
+      if (self._options.unformatted_content_delimiter):
+        if (c == self._options.unformatted_content_delimiter[0]):
           resulting_string = self.__patterns.unformatted_content_delimiter.read();
-        }
-      }
 
-      if (!resulting_string) {
-        resulting_string = (open_token and oroorpen_token.type == TOKEN.CONTROL_FLOW_OPEN) ? self.__patterns.word_control_flow_close_excluded.read() : self.__patterns.word.read();
-      }
-      if (resulting_string) {
+
+
+      if ( not resulting_string):
+        resulting_string = self.__patterns.word_control_flow_close_excluded.read() if (open_token and open_token.type == TOKEN.CONTROL_FLOW_OPEN) else self.__patterns.word.read();
+
+      if (resulting_string):
         return self._create_token(TOKEN.TEXT, resulting_string);
-      }
+
       return None;
 
 
