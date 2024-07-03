@@ -38,22 +38,24 @@ from ..core.templatablepattern import TemplatablePattern
 
 
 class TokenTypes(BaseTokenTypes):
-  TAG_OPEN= 'TK_TAG_OPEN'
-  TAG_CLOSE= 'TK_TAG_CLOSE'
-  CONTROL_FLOW_OPEN= 'TK_CONTROL_FLOW_OPEN'
-  CONTROL_FLOW_CLOSE= 'TK_CONTROL_FLOW_CLOSE'
-  ATTRIBUTE= 'TK_ATTRIBUTE'
-  EQUALS= 'TK_EQUALS'
-  VALUE= 'TK_VALUE'
-  COMMENT= 'TK_COMMENT'
-  TEXT= 'TK_TEXT'
-  UNKNOWN= 'TK_UNKNOWN'
+    TAG_OPEN = "TK_TAG_OPEN"
+    TAG_CLOSE = "TK_TAG_CLOSE"
+    CONTROL_FLOW_OPEN = "TK_CONTROL_FLOW_OPEN"
+    CONTROL_FLOW_CLOSE = "TK_CONTROL_FLOW_CLOSE"
+    ATTRIBUTE = "TK_ATTRIBUTE"
+    EQUALS = "TK_EQUALS"
+    VALUE = "TK_VALUE"
+    COMMENT = "TK_COMMENT"
+    TEXT = "TK_TEXT"
+    UNKNOWN = "TK_UNKNOWN"
+
 
 TOKEN = TokenTypes()
 
 #
 # directives_core = Directives(/<\!--/, /-->/);
-directives_core = Directives(r'<\!--', r'/-->')
+directives_core = Directives(r"<\!--", r"/-->")
+
 
 @dataclass
 class TokenizerPatterns:
@@ -70,52 +72,68 @@ class TokenizerPatterns:
     handlebars_raw_close: Pattern
     comment: Pattern
     cdata: Pattern
-      # https:#en.wikipedia.org/wiki/Conditional_comment
+    # https:#en.wikipedia.org/wiki/Conditional_comment
     conditional_comment: Pattern
     processing: Pattern
 
 
 class Tokenizer(BaseTokenizer):
-  def __init__(self, input_string, options):
-    super().__init__(input_string, options)
-    self._current_tag_name = ''
+    def __init__(self, input_string, options):
+        super().__init__(input_string, options)
+        self._current_tag_name = ""
 
-    # Words end at whitespace or when a tag starts
-    # if we are indenting handlebars, they are considered tags
-    templatable_reader = TemplatablePattern(self._input).read_options(self._options)
-    pattern_reader = Pattern(self._input)
+        # Words end at whitespace or when a tag starts
+        # if we are indenting handlebars, they are considered tags
+        templatable_reader = TemplatablePattern(self._input).read_options(self._options)
+        pattern_reader = Pattern(self._input)
 
-    self.__patterns = TokenizerPatterns(
-      word= templatable_reader.until(/[\n\r\t <]/),
-      word_control_flow_close_excluded= templatable_reader.until(/[\n\r\t <}]/),
-      single_quote= templatable_reader.until_after(/'/),
-      double_quote= templatable_reader.until_after(/"/),
-      attribute= templatable_reader.until(/[\n\r\t =>]|\/>/),
-      element_name= templatable_reader.until(/[\n\r\t >\/]/),
-      angular_control_flow_start= pattern_reader.matching(/\@[a-zA-Z]+[^({]*[({]/),
-      handlebars_comment= pattern_reader.starting_with(/{{!--/).until_after(/--}}/),
-      handlebars= pattern_reader.starting_with(/{{/).until_after(/}}/),
-      handlebars_open= pattern_reader.until(/[\n\r\t }]/),
-      handlebars_raw_close= pattern_reader.until(/}}/),
-      comment= pattern_reader.starting_with(/<!--/).until_after(/-->/),
-      cdata= pattern_reader.starting_with(/<!\[CDATA\[/).until_after(/]]>/),
-      conditional_comment= pattern_reader.starting_with(/<!\[/).until_after(/]>/),
-      processing= pattern_reader.starting_with(/<\?/).until_after(/\?>/),
-      )
+        self.__patterns = TokenizerPatterns(
+            word=templatable_reader.until(r"[\n\r\t <]"),
+            word_control_flow_close_excluded=templatable_reader.until(r"[\n\r\t <}]"),
+            single_quote=templatable_reader.until_after(r"'"),
+            double_quote=templatable_reader.until_after(r'"'),
+            attribute=templatable_reader.until(r"[\n\r\t =>]|\/>"),
+            element_name=templatable_reader.until(r"[\n\r\t >\/]"),
+            angular_control_flow_start=pattern_reader.matching(r"\@[a-zA-Z]+[^({]*[({]"),
+            handlebars_comment=pattern_reader.starting_with(r"{{!--").until_after(r"--}}"),
+            handlebars=pattern_reader.starting_with(r"{{").until_after(r"}}"),
+            handlebars_open=pattern_reader.until(r"[\n\r\t }]"),
+            handlebars_raw_close=pattern_reader.until(r"}}"),
+            comment=pattern_reader.starting_with(r"<!--").until_after(r"-->"),
+            cdata=pattern_reader.starting_with(r"<!\[CDATA\[").until_after(r"]]>"),
+            conditional_comment=pattern_reader.starting_with(r"<!\[").until_after(r"]>"),
+            processing=pattern_reader.starting_with(r"<\?").until_after(r"\?>"),
+        )
 
-    if (self._options.indent_handlebars) {
-      self.__patterns.word = self.__patterns.word.exclude('handlebars');
-      self.__patterns.word_control_flow_close_excluded = self.__patterns.word_control_flow_close_excluded.exclude('handlebars');
-    }
+        # word= templatable_reader.until(/[\n\r\t <]/),
+        # word_control_flow_close_excluded= templatable_reader.until(/[\n\r\t <}]/),
+        # single_quote= templatable_reader.until_after(/'/),
+        # double_quote= templatable_reader.until_after(/"/),
+        # attribute= templatable_reader.until(/[\n\r\t =>]|\/>/),
+        # element_name= templatable_reader.until(/[\n\r\t >\/]/),
+        # angular_control_flow_start= pattern_reader.matching(/\@[a-zA-Z]+[^({]*[({]/),
+        # handlebars_comment= pattern_reader.starting_with(/{{!--/).until_after(/--}}/),
+        # handlebars= pattern_reader.starting_with(/{{/).until_after(/}}/),
+        # handlebars_open= pattern_reader.until(/[\n\r\t }]/),
+        # handlebars_raw_close= pattern_reader.until(/}}/),
+        # comment= pattern_reader.starting_with(/<!--/).until_after(/-->/),
+        # cdata= pattern_reader.starting_with(/<!\[CDATA\[/).until_after(/]]>/),
+        # conditional_comment= pattern_reader.starting_with(/<!\[/).until_after(/]>/),
+        # processing= pattern_reader.starting_with(/<\?/).until_after(/\?>/),
 
-    self._unformatted_content_delimiter = null;
 
-    if (self._options.unformatted_content_delimiter) {
-      var literal_regexp = self._input.get_literal_regexp(self._options.unformatted_content_delimiter);
-      self.__patterns.unformatted_content_delimiter =
-        pattern_reader.matching(literal_regexp)
-        .until_after(literal_regexp);
-    }
+        if (self._options.indent_handlebars):
+          #  XXX: exclude is missing from Pattern
+          self.__patterns.word = self.__patterns.word.exclude('handlebars')
+          self.__patterns.word_control_flow_close_excluded = self.__patterns.word_control_flow_close_excluded.exclude('handlebars')
+
+
+        self._unformatted_content_delimiter = None;
+
+        if (self._options.unformatted_content_delimiter):
+          literal_regexp = self._input.get_literal_regexp(self._options.unformatted_content_delimiter)
+          self.__patterns.unformatted_content_delimiter =        pattern_reader.matching(literal_regexp)        .until_after(literal_regexp)
+
 
 Tokenizer.prototype = new BaseTokenizer();
 
