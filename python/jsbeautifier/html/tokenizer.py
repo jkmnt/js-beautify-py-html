@@ -158,9 +158,8 @@ class Tokenizer(BaseTokenizer):
       self._readWhitespace();
       c = self._input.peek();
 
-      if (c == None) {
-        return self._create_token(TOKEN.EOF, '');
-      }
+      if (c == None):         return self._create_token(TOKEN.EOF, '')
+
 
       token = token or self._read_open_handlebars(c, open_token);
       token = token or self._read_attribute(c, previous_token, open_token);
@@ -178,178 +177,168 @@ class Tokenizer(BaseTokenizer):
 
 
     def _read_comment_or_cdata(self, c): # jshint unused:false
-      var token = None;
-      var resulting_string = None;
-      var directives = None;
+      token = None
+      resulting_string = None
+      directives = None
 
-      if (c == '<') {
-        var peek1 = self._input.peek(1);
+      if (c == '<'):
+        peek1 = self._input.peek(1);
         # We treat all comments as literals, even more than preformatted tags
         # we only look for the appropriate closing marker
-        if (peek1 == '!') {
+        if (peek1 == '!'):
           resulting_string = self.__patterns.comment.read();
 
           # only process directive on html comments
-          if (resulting_string) {
+          if (resulting_string):
             directives = directives_core.get_directives(resulting_string);
-            if (directives and directives.ignore == 'start') {
+            if (directives and directives.ignore == 'start'):
               resulting_string += directives_core.readIgnored(self._input);
-            }
-          } else {
+          else:
             resulting_string = self.__patterns.cdata.read();
-          }
-        }
 
-        if (resulting_string) {
+
+        if (resulting_string):
           token = self._create_token(TOKEN.COMMENT, resulting_string);
           token.directives = directives;
-        }
-      }
 
       return token;
 
 
     def _read_processing(self, c): # jshint unused:false
-      var token = None;
-      var resulting_string = None;
-      var directives = None;
+      token = None;
+      resulting_string = None;
+      directives = None;
 
-      if (c == '<') {
-        var peek1 = self._input.peek(1);
-        if (peek1 == '!' or peek1 == '?') {
+      if (c == '<'):
+        peek1 = self._input.peek(1)
+        if (peek1 == '!' or peek1 == '?'):
           resulting_string = self.__patterns.conditional_comment.read();
           resulting_string = resulting_string or self.__patterns.processing.read();
-        }
 
-        if (resulting_string) {
+
+        if (resulting_string):
           token = self._create_token(TOKEN.COMMENT, resulting_string);
           token.directives = directives;
-        }
-      }
+
+
 
       return token;
 
 
     def _read_open(self, c, open_token):
-      var resulting_string = None;
-      var token = None;
-      if (!open_token or open_token.type == TOKEN.CONTROL_FLOW_OPEN) {
-        if (c == '<') {
+      resulting_string = None;
+      token = None;
+      if (not open_token or open_token.type == TOKEN.CONTROL_FLOW_OPEN):
+        if (c == '<'):
 
           resulting_string = self._input.next();
-          if (self._input.peek() == '/') {
+          if (self._input.peek() == '/'):
             resulting_string += self._input.next();
-          }
+
           resulting_string += self.__patterns.element_name.read();
           token = self._create_token(TOKEN.TAG_OPEN, resulting_string);
-        }
-      }
+
+
       return token;
 
 
     def _read_open_handlebars(self, c, open_token):
-      var resulting_string = None;
-      var token = None;
-      if (!open_token or open_token.type == TOKEN.CONTROL_FLOW_OPEN) {
-        if ((self._options.templating.includes('angular') or self._options.indent_handlebars) and c == '{' and self._input.peek(1) == '{') {
-          if (self._options.indent_handlebars and self._input.peek(2) == '!') {
+      resulting_string = None;
+      token = None;
+      if (not open_token or open_token.type == TOKEN.CONTROL_FLOW_OPEN):
+        if ((self._options.templating.includes('angular') or self._options.indent_handlebars) and c == '{' and self._input.peek(1) == '{'):
+          if (self._options.indent_handlebars and self._input.peek(2) == '!'):
             resulting_string = self.__patterns.handlebars_comment.read();
             resulting_string = resulting_string or self.__patterns.handlebars.read();
             token = self._create_token(TOKEN.COMMENT, resulting_string);
-          } else {
+          else:
             resulting_string = self.__patterns.handlebars_open.read();
             token = self._create_token(TOKEN.TAG_OPEN, resulting_string);
-          }
-        }
-      }
+
       return token;
 
 
     def _read_control_flows(self, c, open_token):
-      var resulting_string = '';
-      var token = None;
+      resulting_string = '';
+      token = None;
       # Only check for control flows if angular templating is set
-      if (!self._options.templating.includes('angular')) {
+      if (not self._options.templating.includes('angular')) {
         return token;
       }
 
-      if (c == '@') {
+      if (c == '@'):
         resulting_string = self.__patterns.angular_control_flow_start.read();
-        if (resulting_string == '') {
+        if (resulting_string == ''):
           return token;
-        }
 
-        var opening_parentheses_count = resulting_string.endsWith('(') ? 1 : 0;
-        var closing_parentheses_count = 0;
+
+        opening_parentheses_count = 1 if resulting_string.endsWith('(') else 0
+        closing_parentheses_count = 0
         # The opening brace of the control flow is where the number of opening and closing parentheses equal
         # e.g. @if({value: true} !== None) {
-        while (!(resulting_string.endsWith('{') and opening_parentheses_count == closing_parentheses_count)) {
-          var next_char = self._input.next();
-          if (next_char == None) {
+        while (not (resulting_string.endsWith('{') and opening_parentheses_count == closing_parentheses_count)):
+          next_char = self._input.next();
+          if (next_char == None):
             break;
-          } else if (next_char == '(') {
-            opening_parentheses_count++;
-          } else if (next_char == ')') {
-            closing_parentheses_count++;
-          }
-          resulting_string += next_char;
-        }
+          elif (next_char == '('):
+            opening_parentheses_count+=1;
+          elif (next_char == ')'):
+            closing_parentheses_count+=1;
+
+          resulting_string += next_char
+
         token = self._create_token(TOKEN.CONTROL_FLOW_OPEN, resulting_string);
-      } else if (c == '}' and open_token and open_token.type == TOKEN.CONTROL_FLOW_OPEN) {
+      elif (c == '}' and open_token and open_token.type == TOKEN.CONTROL_FLOW_OPEN):
         resulting_string = self._input.next();
         token = self._create_token(TOKEN.CONTROL_FLOW_CLOSE, resulting_string);
-      }
+
       return token;
 
 
 
     def _read_close(self, c, open_token):
-      var resulting_string = None;
-      var token = None;
-      if (open_token and open_token.type == TOKEN.TAG_OPEN) {
-        if (open_token.text[0] == '<' and (c == '>' or (c == '/' and self._input.peek(1) == '>'))) {
+      resulting_string = None;
+      token = None;
+      if (open_token and open_token.type == TOKEN.TAG_OPEN):
+        if (open_token.text[0] == '<' and (c == '>' or (c == '/' and self._input.peek(1) == '>'))):
           resulting_string = self._input.next();
-          if (c == '/') { #  for close tag "/>"
+          if (c == '/'): #  for close tag "/>"
             resulting_string += self._input.next();
-          }
+
           token = self._create_token(TOKEN.TAG_CLOSE, resulting_string);
-        } else if (open_token.text[0] == '{' and c == '}' and self._input.peek(1) == '}') {
+        elif (open_token.text[0] == '{' and c == '}' and self._input.peek(1) == '}'):
           self._input.next();
           self._input.next();
           token = self._create_token(TOKEN.TAG_CLOSE, '}}');
-        }
-      }
 
       return token;
 
 
     def _read_attribute(self, c, previous_token, open_token):
-      var token = None;
-      var resulting_string = '';
-      if (open_token and open_token.text[0] == '<') {
+      token = None;
+      resulting_string = '';
+      if (open_token and open_token.text[0] == '<')
 
-        if (c == '=') {
+        if (c == '='):
           token = self._create_token(TOKEN.EQUALS, self._input.next());
-        } else if (c == '"' or c == "'") {
-          var content = self._input.next();
-          if (c == '"') {
+        elif (c == '"' or c == "'"):
+          content = self._input.next();
+          if (c == '"'):
             content += self.__patterns.double_quote.read();
-          } else {
+          else:
             content += self.__patterns.single_quote.read();
-          }
+
           token = self._create_token(TOKEN.VALUE, content);
-        } else {
+        else:
           resulting_string = self.__patterns.attribute.read();
 
-          if (resulting_string) {
-            if (previous_token.type == TOKEN.EQUALS) {
+          if (resulting_string):
+            if (previous_token.type == TOKEN.EQUALS):
               token = self._create_token(TOKEN.VALUE, resulting_string);
-            } else {
+            else:
               token = self._create_token(TOKEN.ATTRIBUTE, resulting_string);
-            }
-          }
-        }
-      }
+
+
       return token;
 
 
