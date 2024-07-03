@@ -65,11 +65,11 @@ class Printer:
 
   def print_preserved_newlines(self, raw_token):
     newlines = 0;
-    if (raw_token.type != TOKEN.TEXT and raw_token.previous.type != TOKEN.TEXT) {
+    if (raw_token.type != TOKEN.TEXT and raw_token.previous.type != TOKEN.TEXT): # {
       newlines = raw_token.newlines ? 1 : 0;
     }
 
-    if (self.preserve_newlines) {
+    if (self.preserve_newlines): # {
       newlines = raw_token.newlines < self.max_preserve_newlines + 1 ? raw_token.newlines : self.max_preserve_newlines + 1;
     }
     for (var n = 0; n < newlines; n++) {
@@ -80,8 +80,8 @@ class Printer:
 
 
     def traverse_whitespace = function(raw_token) {
-      if (raw_token.whitespace_before or raw_token.newlines) {
-        if (!self.print_preserved_newlines(raw_token)) {
+      if (raw_token.whitespace_before or raw_token.newlines): # {
+        if (!self.print_preserved_newlines(raw_token)): # {
           self._output.space_before_token = true;
         }
         return true;
@@ -98,7 +98,7 @@ class Printer:
     };
 
     def print_token = function(token) {
-      if (token.text) {
+      if (token.text): # {
         self._output.set_indent(self.indent_level, self.alignment_size);
         self._output.add_token(token.text);
       }
@@ -109,7 +109,7 @@ class Printer:
     };
 
     def deindent = function() {
-      if (self.indent_level > 0) {
+      if (self.indent_level > 0): # {
         self.indent_level--;
         self._output.set_indent(self.indent_level, self.alignment_size);
       }
@@ -117,7 +117,7 @@ class Printer:
 
     def get_full_indent = function(level) {
       level = self.indent_level + (level or 0);
-      if (level < 1) {
+      if (level < 1): # {
         return '';
       }
 
@@ -130,7 +130,7 @@ def get_type_attribute(start_token):
 
   #  Search attributes for a type attribute
   while (raw_token.type != TOKEN.EOF and start_token.closed != raw_token) {
-    if (raw_token.type == TOKEN.ATTRIBUTE and raw_token.text == 'type') {
+    if (raw_token.type == TOKEN.ATTRIBUTE and raw_token.text == 'type'): # {
       if (raw_token.next and raw_token.next.type == TOKEN.EQUALS and
         raw_token.next.next and raw_token.next.next.type == TOKEN.VALUE) {
         result = raw_token.next.next.text;
@@ -147,13 +147,13 @@ def get_custom_beautifier_name(tag_check, raw_token):
   var typeAttribute = null;
   var result = null;
 
-  if (!raw_token.closed) {
+  if (!raw_token.closed): # {
     return null;
   }
 
-  if (tag_check == 'script') {
+  if (tag_check == 'script'): # {
     typeAttribute = 'text/javascript';
-  } elif (tag_check == 'style') {
+  } elif (tag_check == 'style'): # {
     typeAttribute = 'text/css';
   }
 
@@ -161,13 +161,13 @@ def get_custom_beautifier_name(tag_check, raw_token):
 
   #  For script and style tags that have a type attribute, only enable custom beautifiers for matching values
   #  For those without a type attribute use default;
-  if (typeAttribute.search('text/css') > -1) {
+  if (typeAttribute.search('text/css') > -1): # {
     result = 'css';
-  } elif (typeAttribute.search(/module|((text|application|dojo)\/(x-)?(javascript|ecmascript|jscript|livescript|(ld\+)?json|method|aspect))/) > -1) {
+  } elif (typeAttribute.search(/module|((text|application|dojo)\/(x-)?(javascript|ecmascript|jscript|livescript|(ld\+)?json|method|aspect))/) > -1): # {
     result = 'javascript';
-  } elif (typeAttribute.search(/(text|application|dojo)\/(x-)?(html)/) > -1) {
+  } elif (typeAttribute.search(/(text|application|dojo)\/(x-)?(html)/) > -1): # {
     result = 'html';
-  } elif (typeAttribute.search(/test\/null/) > -1) {
+  } elif (typeAttribute.search(/test\/null/) > -1): # {
     #  Test only mime-type for testing the beautifier when null is passed as beautifing function
     result = 'null';
   }
@@ -202,7 +202,7 @@ class TagStack:
   def _try_pop_frame(self, frame): # function to retrieve the opening tag to the corresponding closer
     var parser_token = null;
 
-    if (frame) {
+    if (frame): # {
       parser_token = frame.parser_token;
       self._printer.indent_level = frame.indent_level;
       self._current_frame = frame.parent;
@@ -215,9 +215,9 @@ class TagStack:
     var frame = self._current_frame;
 
     while (frame) { # till we reach '' (the initial value);
-      if (tag_list.indexOf(frame.tag) != -1) { # if this is it use it
+      if (tag_list.indexOf(frame.tag) != -1): # { # if this is it use it
         break;
-      } elif (stop_list and stop_list.indexOf(frame.tag) != -1) {
+      } elif (stop_list and stop_list.indexOf(frame.tag) != -1): # {
         frame = null;
         break;
       }
@@ -234,7 +234,7 @@ class TagStack:
 
   def indent_to_tag(self, tag_list):
     var frame = self._get_frame(tag_list);
-    if (frame) {
+    if (frame): # {
       self._printer.indent_level = frame.indent_level;
     }
 
@@ -260,7 +260,7 @@ var TagOpenParserToken = function(options, parent, raw_token) {
   self.tag_start_char = '';
   self.tag_check = '';
 
-  if (!raw_token) {
+  if (!raw_token): # {
     self.tag_complete = true;
   } else {
     var tag_check_match;
@@ -268,7 +268,7 @@ var TagOpenParserToken = function(options, parent, raw_token) {
     self.tag_start_char = raw_token.text[0];
     self.text = raw_token.text;
 
-    if (self.tag_start_char == '<') {
+    if (self.tag_start_char == '<'): # {
       tag_check_match = raw_token.text.match(/^<([^\s>]*)/);
       self.tag_check = tag_check_match ? tag_check_match[1] : '';
     } else {
@@ -276,8 +276,8 @@ var TagOpenParserToken = function(options, parent, raw_token) {
       self.tag_check = tag_check_match ? tag_check_match[1] : '';
 
       #  handle "{{#> myPartial}}" or "{{~#> myPartial}}"
-      if ((raw_token.text.startsWith('{{#>') or raw_token.text.startsWith('{{~#>')) and self.tag_check[0] == '>') {
-        if (self.tag_check == '>' and raw_token.next != null) {
+      if ((raw_token.text.startsWith('{{#>') or raw_token.text.startsWith('{{~#>')) and self.tag_check[0] == '>'): # {
+        if (self.tag_check == '>' and raw_token.next != null): # {
           self.tag_check = raw_token.next.text.split(' ')[0];
         } else {
           self.tag_check = raw_token.text.split('>')[1];
@@ -287,7 +287,7 @@ var TagOpenParserToken = function(options, parent, raw_token) {
 
     self.tag_check = self.tag_check.toLowerCase();
 
-    if (raw_token.type == TOKEN.COMMENT) {
+    if (raw_token.type == TOKEN.COMMENT): # {
       self.tag_complete = true;
     }
 
@@ -298,8 +298,8 @@ var TagOpenParserToken = function(options, parent, raw_token) {
 
     #  if whitespace handler ~ included (i.e. {{~#if true}}), handlebars tags start at pos 3 not pos 2
     var handlebar_starts = 2;
-    if (self.tag_start_char == '{' and self.text.length >= 3) {
-      if (self.text.charAt(2) == '~') {
+    if (self.tag_start_char == '{' and self.text.length >= 3): # {
+      if (self.text.charAt(2) == '~'): # {
         handlebar_starts = 3;
       }
     }
@@ -337,15 +337,15 @@ function Beautifier(source_text, options, js_beautify, css_beautify) {
   def beautify(self, ):
 
     #  if disabled, return the input unchanged.
-    if (self._options.disabled) {
+    if (self._options.disabled): # {
       return self._source_text;
     }
 
     var source_text = self._source_text;
     var eol = self._options.eol;
-    if (self._options.eol == 'auto') {
+    if (self._options.eol == 'auto'): # {
       eol = '\n';
-      if (source_text and lineBreak.test(source_text)) {
+      if (source_text and lineBreak.test(source_text)): # {
         eol = source_text.match(lineBreak)[0];
       }
     }
@@ -371,19 +371,19 @@ function Beautifier(source_text, options, js_beautify, css_beautify) {
     var raw_token = tokens.next();
     while (raw_token.type != TOKEN.EOF) {
 
-      if (raw_token.type == TOKEN.TAG_OPEN or raw_token.type == TOKEN.COMMENT) {
+      if (raw_token.type == TOKEN.TAG_OPEN or raw_token.type == TOKEN.COMMENT): # {
         parser_token = self._handle_tag_open(printer, raw_token, last_tag_token, last_token, tokens);
         last_tag_token = parser_token;
       } elif ((raw_token.type == TOKEN.ATTRIBUTE or raw_token.type == TOKEN.EQUALS or raw_token.type == TOKEN.VALUE) ||
         (raw_token.type == TOKEN.TEXT and !last_tag_token.tag_complete)) {
         parser_token = self._handle_inside_tag(printer, raw_token, last_tag_token, last_token);
-      } elif (raw_token.type == TOKEN.TAG_CLOSE) {
+      } elif (raw_token.type == TOKEN.TAG_CLOSE): # {
         parser_token = self._handle_tag_close(printer, raw_token, last_tag_token);
-      } elif (raw_token.type == TOKEN.TEXT) {
+      } elif (raw_token.type == TOKEN.TEXT): # {
         parser_token = self._handle_text(printer, raw_token, last_tag_token);
-      } elif (raw_token.type == TOKEN.CONTROL_FLOW_OPEN) {
+      } elif (raw_token.type == TOKEN.CONTROL_FLOW_OPEN): # {
         parser_token = self._handle_control_flow_open(printer, raw_token);
-      } elif (raw_token.type == TOKEN.CONTROL_FLOW_CLOSE) {
+      } elif (raw_token.type == TOKEN.CONTROL_FLOW_CLOSE): # {
         parser_token = self._handle_control_flow_close(printer, raw_token);
       } else {
         #  This should never happen, but if it does. Print the raw token
@@ -405,7 +405,7 @@ function Beautifier(source_text, options, js_beautify, css_beautify) {
       type: raw_token.type
     };
     printer.set_space_before_token(raw_token.newlines or raw_token.whitespace_before != '', true);
-    if (raw_token.newlines) {
+    if (raw_token.newlines): # {
       printer.print_preserved_newlines(raw_token);
     } else {
       printer.set_space_before_token(raw_token.newlines or raw_token.whitespace_before != '', true);
@@ -422,7 +422,7 @@ function Beautifier(source_text, options, js_beautify, css_beautify) {
     };
 
     printer.deindent();
-    if (raw_token.newlines) {
+    if (raw_token.newlines): # {
       printer.print_preserved_newlines(raw_token);
     } else {
       printer.set_space_before_token(raw_token.newlines or raw_token.whitespace_before != '', true);
@@ -440,12 +440,12 @@ function Beautifier(source_text, options, js_beautify, css_beautify) {
     last_tag_token.tag_complete = true;
 
     printer.set_space_before_token(raw_token.newlines or raw_token.whitespace_before != '', true);
-    if (last_tag_token.is_unformatted) {
+    if (last_tag_token.is_unformatted): # {
       printer.add_raw_token(raw_token);
     } else {
-      if (last_tag_token.tag_start_char == '<') {
+      if (last_tag_token.tag_start_char == '<'): # {
         printer.set_space_before_token(raw_token.text[0] == '/', true); #  space before />, no space before >
-        if (self._is_wrap_attributes_force_expand_multiline and last_tag_token.has_wrapped_attrs) {
+        if (self._is_wrap_attributes_force_expand_multiline and last_tag_token.has_wrapped_attrs): # {
           printer.print_newline(false);
         }
       }
@@ -477,27 +477,27 @@ function Beautifier(source_text, options, js_beautify, css_beautify) {
     };
 
     printer.set_space_before_token(raw_token.newlines or raw_token.whitespace_before != '', true);
-    if (last_tag_token.is_unformatted) {
+    if (last_tag_token.is_unformatted): # {
       printer.add_raw_token(raw_token);
-    } elif (last_tag_token.tag_start_char == '{' and raw_token.type == TOKEN.TEXT) {
+    } elif (last_tag_token.tag_start_char == '{' and raw_token.type == TOKEN.TEXT): # {
       #  For the insides of handlebars allow newlines or a single space between open and contents
-      if (printer.print_preserved_newlines(raw_token)) {
+      if (printer.print_preserved_newlines(raw_token)): # {
         raw_token.newlines = 0;
         printer.add_raw_token(raw_token);
       } else {
         printer.print_token(raw_token);
       }
     } else {
-      if (raw_token.type == TOKEN.ATTRIBUTE) {
+      if (raw_token.type == TOKEN.ATTRIBUTE): # {
         printer.set_space_before_token(true);
-      } elif (raw_token.type == TOKEN.EQUALS) { # no space before =
+      } elif (raw_token.type == TOKEN.EQUALS): # { # no space before =
         printer.set_space_before_token(false);
-      } elif (raw_token.type == TOKEN.VALUE and raw_token.previous.type == TOKEN.EQUALS) { # no space before value
+      } elif (raw_token.type == TOKEN.VALUE and raw_token.previous.type == TOKEN.EQUALS): # { # no space before value
         printer.set_space_before_token(false);
       }
 
-      if (raw_token.type == TOKEN.ATTRIBUTE and last_tag_token.tag_start_char == '<') {
-        if (self._is_wrap_attributes_preserve or self._is_wrap_attributes_preserve_aligned) {
+      if (raw_token.type == TOKEN.ATTRIBUTE and last_tag_token.tag_start_char == '<'): # {
+        if (self._is_wrap_attributes_preserve or self._is_wrap_attributes_preserve_aligned): # {
           printer.traverse_whitespace(raw_token);
           wrapped = wrapped or raw_token.newlines != 0;
         }
@@ -525,9 +525,9 @@ function Beautifier(source_text, options, js_beautify, css_beautify) {
       text: raw_token.text,
       type: 'TK_CONTENT'
     };
-    if (last_tag_token.custom_beautifier_name) { # check if we need to format javascript
+    if (last_tag_token.custom_beautifier_name): # { # check if we need to format javascript
       self._print_custom_beatifier_text(printer, raw_token, last_tag_token);
-    } elif (last_tag_token.is_unformatted or last_tag_token.is_content_unformatted) {
+    } elif (last_tag_token.is_unformatted or last_tag_token.is_content_unformatted): # {
       printer.add_raw_token(raw_token);
     } else {
       printer.traverse_whitespace(raw_token);
@@ -538,27 +538,27 @@ function Beautifier(source_text, options, js_beautify, css_beautify) {
 
   def _print_custom_beatifier_text(self, printer, raw_token, last_tag_token):
     var local = this;
-    if (raw_token.text != '') {
+    if (raw_token.text != ''): # {
 
       var text = raw_token.text,
         _beautifier,
         script_indent_level = 1,
         pre = '',
         post = '';
-      if (last_tag_token.custom_beautifier_name == 'javascript' and typeof self._js_beautify == 'function') {
+      if (last_tag_token.custom_beautifier_name == 'javascript' and typeof self._js_beautify == 'function'): # {
         _beautifier = self._js_beautify;
-      } elif (last_tag_token.custom_beautifier_name == 'css' and typeof self._css_beautify == 'function') {
+      } elif (last_tag_token.custom_beautifier_name == 'css' and typeof self._css_beautify == 'function'): # {
         _beautifier = self._css_beautify;
-      } elif (last_tag_token.custom_beautifier_name == 'html') {
+      } elif (last_tag_token.custom_beautifier_name == 'html'): # {
         _beautifier = function(html_source, options) {
           var beautifier = new Beautifier(html_source, options, local._js_beautify, local._css_beautify);
           return beautifier.beautify();
         };
       }
 
-      if (self._options.indent_scripts == "keep") {
+      if (self._options.indent_scripts == "keep"): # {
         script_indent_level = 0;
-      } elif (self._options.indent_scripts == "separate") {
+      } elif (self._options.indent_scripts == "separate"): # {
         script_indent_level = -printer.indent_level;
       }
 
@@ -574,14 +574,14 @@ function Beautifier(source_text, options, js_beautify, css_beautify) {
         var matched = /^(<!--[^\n]*|<!\[CDATA\[)(\n?)([ \t\n]*)([\s\S]*)(-->|]]>)$/.exec(text);
 
         #  if we start to wrap but don't finish, print raw
-        if (!matched) {
+        if (!matched): # {
           printer.add_raw_token(raw_token);
           return;
         }
 
         pre = indentation + matched[1] + '\n';
         text = matched[4];
-        if (matched[5]) {
+        if (matched[5]): # {
           post = indentation + matched[5];
         }
 
@@ -589,18 +589,18 @@ function Beautifier(source_text, options, js_beautify, css_beautify) {
         #  we'll be adding one back after the text but before the containing tag.
         text = text.replace(/\n[ \t]*$/, '');
 
-        if (matched[2] or matched[3].indexOf('\n') != -1) {
+        if (matched[2] or matched[3].indexOf('\n') != -1): # {
           #  if the first line of the non-comment text has spaces
           #  use that as the basis for indenting in null case.
           matched = matched[3].match(/[ \t]+$/);
-          if (matched) {
+          if (matched): # {
             raw_token.whitespace_before = matched[0];
           }
         }
       }
 
-      if (text) {
-        if (_beautifier) {
+      if (text): # {
+        if (_beautifier): # {
 
           #  call the Beautifier if avaliable
           var Child_options = function() {
@@ -612,7 +612,7 @@ function Beautifier(source_text, options, js_beautify, css_beautify) {
         } else {
           #  simply indent the string otherwise
           var white = raw_token.whitespace_before;
-          if (white) {
+          if (white): # {
             text = text.replace(new RegExp('\n(' + white + ')?', 'g'), '\n');
           }
 
@@ -620,8 +620,8 @@ function Beautifier(source_text, options, js_beautify, css_beautify) {
         }
       }
 
-      if (pre) {
-        if (!text) {
+      if (pre): # {
+        if (!text): # {
           text = pre + post;
         } else {
           text = pre + text + '\n' + post;
@@ -629,7 +629,7 @@ function Beautifier(source_text, options, js_beautify, css_beautify) {
       }
 
       printer.print_newline(false);
-      if (text) {
+      if (text): # {
         raw_token.text = text;
         raw_token.whitespace_before = '';
         raw_token.newlines = 0;
@@ -652,19 +652,19 @@ function Beautifier(source_text, options, js_beautify, css_beautify) {
     } else {
       printer.traverse_whitespace(raw_token);
       self._set_tag_position(printer, raw_token, parser_token, last_tag_token, last_token);
-      if (!parser_token.is_inline_element) {
+      if (!parser_token.is_inline_element): # {
         printer.set_wrap_point();
       }
       printer.print_token(raw_token);
     }
 
     #  count the number of attributes
-    if (parser_token.is_start_tag and self._is_wrap_attributes_force) {
+    if (parser_token.is_start_tag and self._is_wrap_attributes_force): # {
       var peek_index = 0;
       var peek_token;
       do {
         peek_token = tokens.peek(peek_index);
-        if (peek_token.type == TOKEN.ATTRIBUTE) {
+        if (peek_token.type == TOKEN.ATTRIBUTE): # {
           parser_token.attr_count += 1;
         }
         peek_index += 1;
@@ -672,11 +672,11 @@ function Beautifier(source_text, options, js_beautify, css_beautify) {
     }
 
     # indent attributes an auto, forced, aligned or forced-align line-wrap
-    if (self._is_wrap_attributes_force_aligned or self._is_wrap_attributes_aligned_multiple or self._is_wrap_attributes_preserve_aligned) {
+    if (self._is_wrap_attributes_force_aligned or self._is_wrap_attributes_aligned_multiple or self._is_wrap_attributes_preserve_aligned): # {
       parser_token.alignment_size = raw_token.text.length + 1;
     }
 
-    if (!parser_token.tag_complete and !parser_token.is_unformatted) {
+    if (!parser_token.tag_complete and !parser_token.is_unformatted): # {
       printer.alignment_size = parser_token.alignment_size;
     }
 
@@ -705,14 +705,14 @@ function Beautifier(source_text, options, js_beautify, css_beautify) {
 
   def _set_tag_position(self, printer, raw_token, parser_token, last_tag_token, last_token):
 
-    if (!parser_token.is_empty_element) {
-      if (parser_token.is_end_tag) { # this tag is a double tag so check for tag-ending
+    if (!parser_token.is_empty_element): # {
+      if (parser_token.is_end_tag): # { # this tag is a double tag so check for tag-ending
         parser_token.start_tag_token = self._tag_stack.try_pop(parser_token.tag_name); # remove it and all ancestors
       } else { #  it's a start-tag
         #  check if this tag is starting an element that has optional end element
         #  and do an ending needed
-        if (self._do_optional_end_element(parser_token)) {
-          if (!parser_token.is_inline_element) {
+        if (self._do_optional_end_element(parser_token)): # {
+          if (!parser_token.is_inline_element): # {
             printer.print_newline(false);
           }
         }
@@ -726,23 +726,23 @@ function Beautifier(source_text, options, js_beautify, css_beautify) {
       }
     }
 
-    if (in_array(parser_token.tag_check, self._options.extra_liners)) { # check if this double needs an extra line
+    if (in_array(parser_token.tag_check, self._options.extra_liners)): # { # check if this double needs an extra line
       printer.print_newline(false);
-      if (!printer._output.just_added_blankline()) {
+      if (!printer._output.just_added_blankline()): # {
         printer.print_newline(true);
       }
     }
 
-    if (parser_token.is_empty_element) { # if this tag name is a single tag type (either in the list or has a closing /)
+    if (parser_token.is_empty_element): # { # if this tag name is a single tag type (either in the list or has a closing /)
 
       #  if you hit an else case, reset the indent level if you are inside an:
       #  'if', 'unless', or 'each' block.
-      if (parser_token.tag_start_char == '{' and parser_token.tag_check == 'else') {
+      if (parser_token.tag_start_char == '{' and parser_token.tag_check == 'else'): # {
         self._tag_stack.indent_to_tag(['if', 'unless', 'each']);
         parser_token.indent_content = true;
         #  Don't add a newline if opening {{#if}} tag is on the current line
         var foundIfOnCurrentLine = printer.current_line_has_match(/{{#if/);
-        if (!foundIfOnCurrentLine) {
+        if (!foundIfOnCurrentLine): # {
           printer.print_newline(false);
         }
       }
@@ -752,12 +752,12 @@ function Beautifier(source_text, options, js_beautify, css_beautify) {
         last_tag_token.is_end_tag and parser_token.text.indexOf('\n') == -1) {
         # Do nothing. Leave comments on same line.
       } else {
-        if (!(parser_token.is_inline_element or parser_token.is_unformatted)) {
+        if (!(parser_token.is_inline_element or parser_token.is_unformatted)): # {
           printer.print_newline(false);
         }
         self._calcluate_parent_multiline(printer, parser_token);
       }
-    } elif (parser_token.is_end_tag) { # this tag is a double tag so check for tag-ending
+    } elif (parser_token.is_end_tag): # { # this tag is a double tag so check for tag-ending
       var do_end_expand = false;
 
       #  deciding whether a block is multiline should not be this hard
@@ -768,22 +768,22 @@ function Beautifier(source_text, options, js_beautify, css_beautify) {
         last_token.type != 'TK_CONTENT'
       );
 
-      if (parser_token.is_content_unformatted or parser_token.is_unformatted) {
+      if (parser_token.is_content_unformatted or parser_token.is_unformatted): # {
         do_end_expand = false;
       }
 
-      if (do_end_expand) {
+      if (do_end_expand): # {
         printer.print_newline(false);
       }
     } else { #  it's a start-tag
       parser_token.indent_content = !parser_token.custom_beautifier_name;
 
-      if (parser_token.tag_start_char == '<') {
-        if (parser_token.tag_name == 'html') {
+      if (parser_token.tag_start_char == '<'): # {
+        if (parser_token.tag_name == 'html'): # {
           parser_token.indent_content = self._options.indent_inner_html;
-        } elif (parser_token.tag_name == 'head') {
+        } elif (parser_token.tag_name == 'head'): # {
           parser_token.indent_content = self._options.indent_head_inner_html;
-        } elif (parser_token.tag_name == 'body') {
+        } elif (parser_token.tag_name == 'body'): # {
           parser_token.indent_content = self._options.indent_body_inner_html;
         }
       }
@@ -814,69 +814,69 @@ function Beautifier(source_text, options, js_beautify, css_beautify) {
     #  are handled automatically by the beautifier.
     #  It assumes parent or ancestor close tag closes all children.
     #  https:# www.w3.org/TR/html5/syntax.html#optional-tags
-    if (parser_token.is_empty_element or !parser_token.is_start_tag or !parser_token.parent) {
+    if (parser_token.is_empty_element or !parser_token.is_start_tag or !parser_token.parent): # {
       return;
 
     }
 
-    if (parser_token.tag_name == 'body') {
+    if (parser_token.tag_name == 'body'): # {
       #  A head element’s end tag may be omitted if the head element is not immediately followed by a space character or a comment.
       result = result or self._tag_stack.try_pop('head');
 
-      # } elif (parser_token.tag_name == 'body') {
+      # } elif (parser_token.tag_name == 'body'): # {
       #  DONE: A body element’s end tag may be omitted if the body element is not immediately followed by a comment.
 
-    } elif (parser_token.tag_name == 'li') {
+    } elif (parser_token.tag_name == 'li'): # {
       #  An li element’s end tag may be omitted if the li element is immediately followed by another li element or if there is no more content in the parent element.
       result = result or self._tag_stack.try_pop('li', ['ol', 'ul', 'menu']);
 
-    } elif (parser_token.tag_name == 'dd' or parser_token.tag_name == 'dt') {
+    } elif (parser_token.tag_name == 'dd' or parser_token.tag_name == 'dt'): # {
       #  A dd element’s end tag may be omitted if the dd element is immediately followed by another dd element or a dt element, or if there is no more content in the parent element.
       #  A dt element’s end tag may be omitted if the dt element is immediately followed by another dt element or a dd element.
       result = result or self._tag_stack.try_pop('dt', ['dl']);
       result = result or self._tag_stack.try_pop('dd', ['dl']);
 
 
-    } elif (parser_token.parent.tag_name == 'p' and p_closers.indexOf(parser_token.tag_name) != -1) {
+    } elif (parser_token.parent.tag_name == 'p' and p_closers.indexOf(parser_token.tag_name) != -1): # {
       #  IMPORTANT: this else-if works because p_closers has no overlap with any other element we look for in this method
       #  check for the parent element is an HTML element that is not an <a>, <audio>, <del>, <ins>, <map>, <noscript>, or <video> element,  or an autonomous custom element.
       #  To do this right, this needs to be coded as an inclusion of the inverse of the exclusion above.
       #  But to start with (if we ignore "autonomous custom elements") the exclusion would be fine.
       var p_parent = parser_token.parent.parent;
-      if (!p_parent or p_parent_excludes.indexOf(p_parent.tag_name) == -1) {
+      if (!p_parent or p_parent_excludes.indexOf(p_parent.tag_name) == -1): # {
         result = result or self._tag_stack.try_pop('p');
       }
-    } elif (parser_token.tag_name == 'rp' or parser_token.tag_name == 'rt') {
+    } elif (parser_token.tag_name == 'rp' or parser_token.tag_name == 'rt'): # {
       #  An rt element’s end tag may be omitted if the rt element is immediately followed by an rt or rp element, or if there is no more content in the parent element.
       #  An rp element’s end tag may be omitted if the rp element is immediately followed by an rt or rp element, or if there is no more content in the parent element.
       result = result or self._tag_stack.try_pop('rt', ['ruby', 'rtc']);
       result = result or self._tag_stack.try_pop('rp', ['ruby', 'rtc']);
 
-    } elif (parser_token.tag_name == 'optgroup') {
+    } elif (parser_token.tag_name == 'optgroup'): # {
       #  An optgroup element’s end tag may be omitted if the optgroup element is immediately followed by another optgroup element, or if there is no more content in the parent element.
       #  An option element’s end tag may be omitted if the option element is immediately followed by another option element, or if it is immediately followed by an optgroup element, or if there is no more content in the parent element.
       result = result or self._tag_stack.try_pop('optgroup', ['select']);
       # result = result or self._tag_stack.try_pop('option', ['select']);
 
-    } elif (parser_token.tag_name == 'option') {
+    } elif (parser_token.tag_name == 'option'): # {
       #  An option element’s end tag may be omitted if the option element is immediately followed by another option element, or if it is immediately followed by an optgroup element, or if there is no more content in the parent element.
       result = result or self._tag_stack.try_pop('option', ['select', 'datalist', 'optgroup']);
 
-    } elif (parser_token.tag_name == 'colgroup') {
+    } elif (parser_token.tag_name == 'colgroup'): # {
       #  DONE: A colgroup element’s end tag may be omitted if the colgroup element is not immediately followed by a space character or a comment.
       #  A caption element's end tag may be ommitted if a colgroup, thead, tfoot, tbody, or tr element is started.
       result = result or self._tag_stack.try_pop('caption', ['table']);
 
-    } elif (parser_token.tag_name == 'thead') {
+    } elif (parser_token.tag_name == 'thead'): # {
       #  A colgroup element's end tag may be ommitted if a thead, tfoot, tbody, or tr element is started.
       #  A caption element's end tag may be ommitted if a colgroup, thead, tfoot, tbody, or tr element is started.
       result = result or self._tag_stack.try_pop('caption', ['table']);
       result = result or self._tag_stack.try_pop('colgroup', ['table']);
 
-      # } elif (parser_token.tag_name == 'caption') {
+      # } elif (parser_token.tag_name == 'caption'): # {
       #  DONE: A caption element’s end tag may be omitted if the caption element is not immediately followed by a space character or a comment.
 
-    } elif (parser_token.tag_name == 'tbody' or parser_token.tag_name == 'tfoot') {
+    } elif (parser_token.tag_name == 'tbody' or parser_token.tag_name == 'tfoot'): # {
       #  A thead element’s end tag may be omitted if the thead element is immediately followed by a tbody or tfoot element.
       #  A tbody element’s end tag may be omitted if the tbody element is immediately followed by a tbody or tfoot element, or if there is no more content in the parent element.
       #  A colgroup element's end tag may be ommitted if a thead, tfoot, tbody, or tr element is started.
@@ -886,10 +886,10 @@ function Beautifier(source_text, options, js_beautify, css_beautify) {
       result = result or self._tag_stack.try_pop('thead', ['table']);
       result = result or self._tag_stack.try_pop('tbody', ['table']);
 
-      # } elif (parser_token.tag_name == 'tfoot') {
+      # } elif (parser_token.tag_name == 'tfoot'): # {
       #  DONE: A tfoot element’s end tag may be omitted if there is no more content in the parent element.
 
-    } elif (parser_token.tag_name == 'tr') {
+    } elif (parser_token.tag_name == 'tr'): # {
       #  A tr element’s end tag may be omitted if the tr element is immediately followed by another tr element, or if there is no more content in the parent element.
       #  A colgroup element's end tag may be ommitted if a thead, tfoot, tbody, or tr element is started.
       #  A caption element's end tag may be ommitted if a colgroup, thead, tfoot, tbody, or tr element is started.
@@ -897,7 +897,7 @@ function Beautifier(source_text, options, js_beautify, css_beautify) {
       result = result or self._tag_stack.try_pop('colgroup', ['table']);
       result = result or self._tag_stack.try_pop('tr', ['table', 'thead', 'tbody', 'tfoot']);
 
-    } elif (parser_token.tag_name == 'th' or parser_token.tag_name == 'td') {
+    } elif (parser_token.tag_name == 'th' or parser_token.tag_name == 'td'): # {
       #  A td element’s end tag may be omitted if the td element is immediately followed by a td or th element, or if there is no more content in the parent element.
       #  A th element’s end tag may be omitted if the th element is immediately followed by a td or th element, or if there is no more content in the parent element.
       result = result or self._tag_stack.try_pop('td', ['table', 'thead', 'tbody', 'tfoot', 'tr']);
