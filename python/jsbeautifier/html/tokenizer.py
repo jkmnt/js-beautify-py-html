@@ -26,7 +26,10 @@
 #   SOFTWARE.
 # */
 
+# from dataclasses import dataclass
+
 from dataclasses import dataclass
+
 from ..core.inputscanner import InputScanner
 from ..core.tokenizer import TokenTypes as BaseTokenTypes
 from ..core.tokenizer import Tokenizer as BaseTokenizer
