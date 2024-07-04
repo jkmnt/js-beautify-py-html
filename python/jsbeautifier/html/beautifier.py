@@ -42,6 +42,40 @@ lineBreak = re.compile(r"\r\n|[\r\n]")
 # allLineBreaks = /\r\n|[\r\n]/g;
 allLineBreaks = re.compile(r"\r\n|[\r\n]", re.MULTILINE)
 
+# To be used for <p> tag special case:
+p_closers = [
+    "address",
+    "article",
+    "aside",
+    "blockquote",
+    "details",
+    "div",
+    "dl",
+    "fieldset",
+    "figcaption",
+    "figure",
+    "footer",
+    "form",
+    "h1",
+    "h2",
+    "h3",
+    "h4",
+    "h5",
+    "h6",
+    "header",
+    "hr",
+    "main",
+    "menu",
+    "nav",
+    "ol",
+    "p",
+    "pre",
+    "section",
+    "table",
+    "ul",
+]
+p_parent_excludes = ["a", "audio", "del", "ins", "map", "noscript", "video"]
+
 
 class Printer:
     def __init__(self, options, base_indent_string: str):  # handles input/output and some other printing functions
@@ -56,7 +90,7 @@ class Printer:
     def current_line_has_match(self, pattern: str):
         return self._output.current_line and self._output.current_line.has_match(pattern)
 
-    def set_space_before_token(self, value, non_breaking):
+    def set_space_before_token(self, value: bool, non_breaking: bool | None = None):
         self._output.space_before_token = value
         self._output.non_breaking_space = non_breaking
 
@@ -180,10 +214,6 @@ def get_custom_beautifier_name(tag_check, raw_token):
         result = "null"
 
     return result
-
-
-def in_array(what, arr):
-    return arr.indexOf(what) != -1
 
 
 class TagFrame:
@@ -319,7 +349,7 @@ class TagOpenParserToken:
                 and (
                     not options.indent_handlebars
                     or len(self.text) < 3
-                    or (re.search(r"[^#\^]", self.text[handlebar_starts : handlebar_starts + 1]))
+                    or (re.search(r"[^#\^]", self.text[handlebar_starts : handlebar_starts + 1])) is not None
                 )
             )
 
@@ -443,7 +473,7 @@ class Beautifier:
         printer.alignment_size = 0
         last_tag_token.tag_complete = True
 
-        printer.set_space_before_token(raw_token.newlines or raw_token.whitespace_before != "", True)
+        printer.set_space_before_token(bool(raw_token.newlines) or raw_token.whitespace_before != "", True)
         if last_tag_token.is_unformatted:
             printer.add_raw_token(raw_token)
         else:
@@ -474,7 +504,7 @@ class Beautifier:
         wrapped = last_tag_token.has_wrapped_attrs
         parser_token = {"text": raw_token.text, "type": raw_token.type}
 
-        printer.set_space_before_token(raw_token.newlines or raw_token.whitespace_before != "", True)
+        printer.set_space_before_token(bool(raw_token.newlines) or raw_token.whitespace_before != "", True)
         if last_tag_token.is_unformatted:
             printer.add_raw_token(raw_token)
         elif last_tag_token.tag_start_char == "{" and raw_token.type == TOKEN.TEXT:
@@ -699,23 +729,23 @@ class Beautifier:
 
         parser_token.alignment_size = self._options.wrap_attributes_indent_size
 
-        parser_token.is_end_tag = parser_token.is_end_tag or in_array(
-            parser_token.tag_check, self._options.void_elements
-        )
+        parser_token.is_end_tag = parser_token.is_end_tag or parser_token.tag_check in self._options.void_elements
 
         parser_token.is_empty_element = parser_token.tag_complete or (
             parser_token.is_start_tag and parser_token.is_end_tag
         )
 
-        parser_token.is_unformatted = not parser_token.tag_complete and in_array(
-            parser_token.tag_check, self._options.unformatted
+        parser_token.is_unformatted = (
+            not parser_token.tag_complete and parser_token.tag_check in self._options.unformatted
         )
-        parser_token.is_content_unformatted = not parser_token.is_empty_element and in_array(
-            parser_token.tag_check, self._options.content_unformatted
+
+        parser_token.is_content_unformatted = (
+            not parser_token.is_empty_element and parser_token.tag_check in self._options.content_unformatted
         )
+
         parser_token.is_inline_element = (
-            in_array(parser_token.tag_name, self._options.inline)
-            or (self._options.inline_custom_elements and parser_token.tag_name.includes("-"))
+            parser_token.tag_name in self._options.inline
+            or (self._options.inline_custom_elements and "-" in parser_token.tag_name)
             or parser_token.tag_start_char == "{"
         )
 
@@ -744,7 +774,7 @@ class Beautifier:
                 ):
                     parser_token.custom_beautifier_name = get_custom_beautifier_name(parser_token.tag_check, raw_token)
 
-        if in_array(parser_token.tag_check, self._options.extra_liners):  # { # check if this double needs an extra line
+        if parser_token.tag_check in self._options.extra_liners:  # check if this double needs an extra line
             printer.print_newline(False)
             if not printer._output.just_added_blankline():
                 printer.print_newline(True)
@@ -768,7 +798,7 @@ class Beautifier:
                 parser_token.tag_name == "!--"
                 and last_token.type == TOKEN.TAG_CLOSE
                 and last_tag_token.is_end_tag
-                and parser_token.text.indexOf("\n") == -1
+                and "\n" in parser_token.text
             ):
                 pass
                 # Do nothing. Leave comments on same line.
@@ -825,40 +855,6 @@ class Beautifier:
         ):
             parser_token.parent.multiline_content = True
 
-    # To be used for <p> tag special case:
-    p_closers = [
-        "address",
-        "article",
-        "aside",
-        "blockquote",
-        "details",
-        "div",
-        "dl",
-        "fieldset",
-        "figcaption",
-        "figure",
-        "footer",
-        "form",
-        "h1",
-        "h2",
-        "h3",
-        "h4",
-        "h5",
-        "h6",
-        "header",
-        "hr",
-        "main",
-        "menu",
-        "nav",
-        "ol",
-        "p",
-        "pre",
-        "section",
-        "table",
-        "ul",
-    ]
-    p_parent_excludes = ["a", "audio", "del", "ins", "map", "noscript", "video"]
-
     def _do_optional_end_element(self, parser_token):
         result = None
         #  NOTE: cases of "if there is no more content in the parent element"
@@ -885,13 +881,13 @@ class Beautifier:
             result = result or self._tag_stack.try_pop("dt", ["dl"])
             result = result or self._tag_stack.try_pop("dd", ["dl"])
 
-        elif parser_token.parent.tag_name == "p" and p_closers.indexOf(parser_token.tag_name) != -1:
+        elif parser_token.parent.tag_name == "p" and parser_token.tag_name in p_closers:
             #  IMPORTANT: this else-if works because p_closers has no overlap with any other element we look for in this method
             #  check for the parent element is an HTML element that is not an <a>, <audio>, <del>, <ins>, <map>, <noscript>, or <video> element,  or an autonomous custom element.
             #  To do this right, this needs to be coded as an inclusion of the inverse of the exclusion above.
             #  But to start with (if we ignore "autonomous custom elements") the exclusion would be fine.
             p_parent = parser_token.parent.parent
-            if not p_parent or p_parent_excludes.indexOf(p_parent.tag_name) == -1:
+            if not p_parent or (p_parent.tag_name not in p_parent_excludes):
                 result = result or self._tag_stack.try_pop("p")
 
         elif parser_token.tag_name == "rp" or parser_token.tag_name == "rt":
