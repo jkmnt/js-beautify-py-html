@@ -26,6 +26,8 @@
 #   SOFTWARE.
 # */
 
+from __future__ import annotations
+
 import typing as t
 
 import re
@@ -350,9 +352,9 @@ class TagOpenParserToken:
 
 
 class Beautifier:
-    def __init__(self, source_text: str | None, options: t.Mapping[str, t.Any] | None, js_beautify, css_beautify):
+    def __init__(self, source_text: str, options: t.Mapping[str, t.Any] | None = None, js_beautify = None, css_beautify = None):
         # Wrapper function to invoke all the necessary constructors and deal with the output.
-        self._source_text = source_text or ""
+        self._source_text = source_text
         options = options or {}
         self._js_beautify = js_beautify
         self._css_beautify = css_beautify
