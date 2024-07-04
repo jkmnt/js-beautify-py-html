@@ -28,8 +28,8 @@ from ..core.token import Token
 
 
 class TokenStream:
-    def __init__(self, parent_token=None):
-        self.__tokens = []
+    def __init__(self, parent_token: Token | None = None):
+        self.__tokens: list[Token] = []
         self.__tokens_length = len(self.__tokens)
         self.__position = 0
         self.__parent_token = parent_token
@@ -59,7 +59,7 @@ class TokenStream:
 
         return val
 
-    def add(self, token):
+    def add(self, token: Token):
         if self.__parent_token:
             token.parent = self.__parent_token
 

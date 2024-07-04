@@ -25,14 +25,14 @@
 
 class Token:
     def __init__(self, type, text, newlines=0, whitespace_before=""):
-        self.type = type
-        self.text = text
+        self.type: str = type
+        self.text: str = text
         self.comments_before = None
         self.newlines = newlines
         self.whitespace_before = whitespace_before
-        self.parent = None
-        self.next = None
-        self.previous = None
+        self.parent: Token | None = None
+        self.next: Token | None = None
+        self.previous: Token | None = None
         self.opened = None
         self.closed = None
         self.directives = None
