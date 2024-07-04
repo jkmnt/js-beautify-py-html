@@ -1,4 +1,3 @@
-# /*jshint node:true */
 # /*
 #
 #   The MIT License (MIT)
@@ -31,6 +30,7 @@
 from dataclasses import dataclass
 
 from ..core.inputscanner import InputScanner
+from ..core.tokenizer import Token
 from ..core.tokenizer import TokenTypes as BaseTokenTypes
 from ..core.tokenizer import Tokenizer as BaseTokenizer
 from ..core.tokenizer import TokenizerPatterns as BaseTokenizerPatterns
@@ -79,6 +79,8 @@ class TokenizerPatterns:
     conditional_comment: Pattern
     processing: Pattern
 
+    unformatted_content_delimiter: Pattern | None
+
 
 class Tokenizer(BaseTokenizer):
     def __init__(self, input_string, options):
@@ -106,6 +108,7 @@ class Tokenizer(BaseTokenizer):
             cdata=pattern_reader.starting_with(r"<!\[CDATA\[").until_after(r"]]>"),
             conditional_comment=pattern_reader.starting_with(r"<!\[").until_after(r"]>"),
             processing=pattern_reader.starting_with(r"<\?").until_after(r"\?>"),
+            unformatted_content_delimiter=None,
         )
 
         # word= templatable_reader.until(/[\n\r\t <]/),
@@ -126,6 +129,8 @@ class Tokenizer(BaseTokenizer):
 
         if self._options.indent_handlebars:
             #  XXX: exclude is missing from Pattern
+            assert isinstance(self.__patterns.word, TemplatablePattern)
+            assert isinstance(self.__patterns.word_control_flow_close_excluded, TemplatablePattern)
             self.__patterns.word = self.__patterns.word.exclude("handlebars")
             self.__patterns.word_control_flow_close_excluded = self.__patterns.word_control_flow_close_excluded.exclude(
                 "handlebars"
@@ -134,19 +139,17 @@ class Tokenizer(BaseTokenizer):
         self._unformatted_content_delimiter = None
 
         if self._options.unformatted_content_delimiter:
-            literal_regexp = self._input.get_literal_regexp(self._options.unformatted_content_delimiter)
-            self.__patterns.unformatted_content_delimiter = pattern_reader.matching(literal_regexp).until_after(
-                literal_regexp
-            )
+            regexp = self._input.get_regexp(self._options.unformatted_content_delimiter)
+            if regexp:
+                self.__patterns.unformatted_content_delimiter = pattern_reader.matching(regexp).until_after(regexp)
 
-    def _is_comment(self, current_token):  # jshint unused:false
-        return False
-        # current_token.type == TOKEN.COMMENT or current_token.type == TOKEN.UNKNOWN;
+    def _is_comment(self, current_token: Token):
+        return False  # current_token.type == TOKEN.COMMENT or current_token.type == TOKEN.UNKNOWN;
 
-    def _is_opening(self, current_token):
+    def _is_opening(self, current_token: Token):
         return current_token.type == TOKEN.TAG_OPEN or current_token.type == TOKEN.CONTROL_FLOW_OPEN
 
-    def _is_closing(self, current_token, open_token):
+    def _is_closing(self, current_token: Token, open_token: Token | None):
         return (
             current_token.type == TOKEN.TAG_CLOSE
             and (
@@ -158,15 +161,13 @@ class Tokenizer(BaseTokenizer):
             )
         ) or (
             current_token.type == TOKEN.CONTROL_FLOW_CLOSE
-            and (current_token.text == "}" and open_token.text.endsWith("{"))
+            and (current_token.text == "}" and open_token and open_token.text.endswith("{"))
         )
 
-    def _reset(
-        self,
-    ):
+    def _reset(self):
         self._current_tag_name = ""
 
-    def _get_next_token(self, previous_token, open_token):  # jshint unused:false
+    def _get_next_token(self, previous_token: Token, open_token: Token | None):
         token = None
         self._readWhitespace()
         c = self._input.peek()
@@ -188,7 +189,7 @@ class Tokenizer(BaseTokenizer):
 
         return token
 
-    def _read_comment_or_cdata(self, c):  # jshint unused:false
+    def _read_comment_or_cdata(self, c: str):
         token = None
         resulting_string = None
         directives = None
@@ -203,7 +204,7 @@ class Tokenizer(BaseTokenizer):
                 # only process directive on html comments
                 if resulting_string:
                     directives = directives_core.get_directives(resulting_string)
-                    if directives and directives.ignore == "start":
+                    if directives and directives["ignore"] == "start":
                         resulting_string += directives_core.readIgnored(self._input)
                 else:
                     resulting_string = self.__patterns.cdata.read()
@@ -214,7 +215,7 @@ class Tokenizer(BaseTokenizer):
 
         return token
 
-    def _read_processing(self, c):  # jshint unused:false
+    def _read_processing(self, c: str):
         token = None
         resulting_string = None
         directives = None
@@ -231,7 +232,7 @@ class Tokenizer(BaseTokenizer):
 
         return token
 
-    def _read_open(self, c, open_token):
+    def _read_open(self, c: str, open_token: Token | None):
         resulting_string = None
         token = None
         if not open_token or open_token.type == TOKEN.CONTROL_FLOW_OPEN:
@@ -246,7 +247,7 @@ class Tokenizer(BaseTokenizer):
 
         return token
 
-    def _read_open_handlebars(self, c, open_token):
+    def _read_open_handlebars(self, c: str, open_token: Token | None):
         resulting_string = None
         token = None
         if not open_token or open_token.type == TOKEN.CONTROL_FLOW_OPEN:
@@ -265,7 +266,7 @@ class Tokenizer(BaseTokenizer):
 
         return token
 
-    def _read_control_flows(self, c, open_token):
+    def _read_control_flows(self, c: str, open_token: Token | None):
         resulting_string = ""
         token = None
         # Only check for control flows if angular templating is set
@@ -277,11 +278,11 @@ class Tokenizer(BaseTokenizer):
             if resulting_string == "":
                 return token
 
-            opening_parentheses_count = 1 if resulting_string.endsWith("(") else 0
+            opening_parentheses_count = 1 if resulting_string.endswith("(") else 0
             closing_parentheses_count = 0
             # The opening brace of the control flow is where the number of opening and closing parentheses equal
             # e.g. @if({value: true} !== None) {
-            while not (resulting_string.endsWith("{") and opening_parentheses_count == closing_parentheses_count):
+            while not (resulting_string.endswith("{") and opening_parentheses_count == closing_parentheses_count):
                 next_char = self._input.next()
                 if next_char == None:
                     break
@@ -299,7 +300,7 @@ class Tokenizer(BaseTokenizer):
 
         return token
 
-    def _read_close(self, c, open_token):
+    def _read_close(self, c: str, open_token: Token | None):
         resulting_string = None
         token = None
         if open_token and open_token.type == TOKEN.TAG_OPEN:
@@ -316,7 +317,7 @@ class Tokenizer(BaseTokenizer):
 
         return token
 
-    def _read_attribute(self, c, previous_token, open_token):
+    def _read_attribute(self, c, previous_token: Token, open_token: Token | None):
         token = None
         resulting_string = ""
         if open_token and open_token.text[0] == "<":
@@ -342,7 +343,7 @@ class Tokenizer(BaseTokenizer):
 
         return token
 
-    def _is_content_unformatted(self, tag_name):
+    def _is_content_unformatted(self, tag_name: str):
         # void_elements have no content and so cannot have unformatted content
         # script and style tags should always be read as unformatted content
         # finally content_unformatted and unformatted element contents are unformatted
@@ -351,17 +352,18 @@ class Tokenizer(BaseTokenizer):
             or self._options.unformatted.indexOf(tag_name) != -1
         )
 
-    def _read_raw_content(self, c, previous_token, open_token):  # jshint unused:false
+    def _read_raw_content(self, c, previous_token: Token, open_token: Token | None):
         resulting_string = ""
         if open_token and open_token.text[0] == "{":
             resulting_string = self.__patterns.handlebars_raw_close.read()
         elif (
             previous_token.type == TOKEN.TAG_CLOSE
+            and previous_token.opened
             and previous_token.opened.text[0] == "<"
             and previous_token.text[0] != "/"
         ):
             # ^^ empty tag has no content
-            tag_name = previous_token.opened.text.substr(1).toLowerCase()
+            tag_name = previous_token.opened.text[1:].lower()
             if self._is_content_unformatted(tag_name):
                 # XXX: disabled
                 # resulting_string = self._input.readUntil(re.'{}' RegExp('</' + tag_name + '[\\n\\r\\t ]*?>', 'ig'));
@@ -372,13 +374,14 @@ class Tokenizer(BaseTokenizer):
 
         return None
 
-    def _read_script_and_style(self, c, previous_token):  # jshint unused:false
+    def _read_script_and_style(self, c: str, previous_token: Token):
         if (
             previous_token.type == TOKEN.TAG_CLOSE
+            and previous_token.opened
             and previous_token.opened.text[0] == "<"
             and previous_token.text[0] != "/"
         ):
-            tag_name = previous_token.opened.text.substr(1).toLowerCase()
+            tag_name = previous_token.opened.text[1:].lower()
             if tag_name == "script" or tag_name == "style":
                 # Script and style tags are allowed to have comments wrapping their content
                 # or just have regular content.
@@ -395,9 +398,9 @@ class Tokenizer(BaseTokenizer):
 
         return None
 
-    def _read_content_word(self, c, open_token):
+    def _read_content_word(self, c, open_token: Token | None):
         resulting_string = ""
-        if self._options.unformatted_content_delimiter:
+        if self._options.unformatted_content_delimiter and self.__patterns.unformatted_content_delimiter:
             if c == self._options.unformatted_content_delimiter[0]:
                 resulting_string = self.__patterns.unformatted_content_delimiter.read()
 
@@ -412,7 +415,3 @@ class Tokenizer(BaseTokenizer):
             return self._create_token(TOKEN.TEXT, resulting_string)
 
         return None
-
-
-# module.exports.Tokenizer = Tokenizer;
-# module.exports.TOKEN = TOKEN;

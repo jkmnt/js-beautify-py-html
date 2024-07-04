@@ -24,9 +24,15 @@
 
 __all__ = ["Pattern"]
 
+import re
+
+from .inputscanner import InputScanner
+
+Re = re.Pattern | str
+
 
 class Pattern:
-    def __init__(self, input_scanner, parent=None):
+    def __init__(self, input_scanner: InputScanner, parent: "Pattern" | None = None):
         self._input = input_scanner
         self._starting_pattern = None
         self._match_pattern = None
@@ -42,35 +48,34 @@ class Pattern:
     def read(self):
         result = self._input.read(self._starting_pattern)
         if (self._starting_pattern is None) or result:
-            result += self._input.read(
-                self._match_pattern, self._until_pattern, self._until_after
-            )
+            result += self._input.read(self._match_pattern, self._until_pattern, self._until_after)
         return result
 
     def read_match(self):
+        assert self._match_pattern
         return self._input.match(self._match_pattern)
 
-    def until_after(self, pattern):
+    def until_after(self, pattern: Re):
         result = self._create()
         result._until_after = True
         result._until_pattern = self._input.get_regexp(pattern)
         result._update()
         return result
 
-    def until(self, pattern):
+    def until(self, pattern: Re):
         result = self._create()
         result._until_after = False
         result._until_pattern = self._input.get_regexp(pattern)
         result._update()
         return result
 
-    def starting_with(self, pattern):
+    def starting_with(self, pattern: Re):
         result = self._create()
         result._starting_pattern = self._input.get_regexp(pattern)
         result._update()
         return result
 
-    def matching(self, pattern):
+    def matching(self, pattern: Re):
         result = self._create()
         result._match_pattern = self._input.get_regexp(pattern)
         result._update()

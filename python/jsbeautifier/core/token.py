@@ -22,17 +22,24 @@
 # CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
+import typing as t
+
+
+if t.TYPE_CHECKING:
+    from .tokenstream import TokenStream
+    from .directives import DirectivesMap
+
 
 class Token:
-    def __init__(self, type, text, newlines=0, whitespace_before=""):
+    def __init__(self, type: str, text: str, newlines=0, whitespace_before=""):
         self.type: str = type
         self.text: str = text
-        self.comments_before = None
+        self.comments_before: TokenStream | None = None
         self.newlines = newlines
         self.whitespace_before = whitespace_before
         self.parent: Token | None = None
         self.next: Token | None = None
         self.previous: Token | None = None
-        self.opened = None
-        self.closed = None
-        self.directives = None
+        self.opened: Token | None = None
+        self.closed: Token | None = None
+        self.directives: DirectivesMap | None = None

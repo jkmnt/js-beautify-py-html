@@ -24,15 +24,19 @@
 
 import re
 
+import typing as t
+
+if t.TYPE_CHECKING:
+    from .pattern import Re
 
 class InputScanner:
-    def __init__(self, input_string):
+    def __init__(self, input_string: str | None):
         self.__six = __import__("six")
         if input_string is None:
             input_string = ""
         self.__input = input_string
         self.__input_length = len(self.__input)
-        self.__position = 0
+        self.__position: int = 0
 
     def restart(self):
         self.__position = 0
@@ -45,7 +49,9 @@ class InputScanner:
         return self.__position < self.__input_length
 
     def next(self):
-        val = None
+        # XXX: typechecker got crazy over this None. replacing with empty string
+        # val = None
+        val = ""
         if self.hasNext():
             val = self.__input[self.__position]
             self.__position += 1
@@ -60,20 +66,16 @@ class InputScanner:
 
         return val
 
-    def test(self, pattern, index=0):
+    def test(self, pattern: re.Pattern, index=0):
         index += self.__position
-        return (
-            index >= 0
-            and index < self.__input_length
-            and bool(pattern.match(self.__input, index))
-        )
+        return index >= 0 and index < self.__input_length and bool(pattern.match(self.__input, index))
 
-    def testChar(self, pattern, index=0):
+    def testChar(self, pattern: re.Pattern, index=0):
         # test one character regex match
         val = self.peek(index)
         return val is not None and bool(pattern.match(val))
 
-    def match(self, pattern):
+    def match(self, pattern: re.Pattern):
         pattern_match = None
         if self.hasNext():
             pattern_match = pattern.match(self.__input, self.__position)
@@ -81,7 +83,7 @@ class InputScanner:
                 self.__position = pattern_match.end(0)
         return pattern_match
 
-    def read(self, starting_pattern, until_pattern=None, until_after=False):
+    def read(self, starting_pattern: re.Pattern | None, until_pattern: re.Pattern | None = None, until_after=False):
         val = ""
         pattern_match = None
         if bool(starting_pattern):
@@ -94,7 +96,7 @@ class InputScanner:
 
         return val
 
-    def readUntil(self, pattern, include_match=False):
+    def readUntil(self, pattern: re.Pattern, include_match=False):
         val = ""
         pattern_match = None
         match_index = self.__position
@@ -113,20 +115,23 @@ class InputScanner:
 
         return val
 
-    def readUntilAfter(self, pattern):
+    def readUntilAfter(self, pattern: re.Pattern):
         return self.readUntil(pattern, True)
 
-    def get_regexp(self, pattern, match_from=False):
+    def get_regexp(self, pattern: Re | None, match_from=False):
         result = None
         # strings are converted to regexp
-        if isinstance(pattern, self.__six.string_types) and pattern != "":
+        if isinstance(pattern, str) and pattern != "":
             result = re.compile(pattern)
-        elif pattern is not None:
+        # ?
+        # elif pattern is not None:
+        #     result = re.compile(pattern.pattern)
+        elif isinstance(pattern, re.Pattern):
             result = re.compile(pattern.pattern)
         return result
 
     # css beautifier legacy helpers
-    def peekUntilAfter(self, pattern):
+    def peekUntilAfter(self, pattern: re.Pattern):
         start = self.__position
         val = self.readUntilAfter(pattern)
         self.__position = start
@@ -134,7 +139,4 @@ class InputScanner:
 
     def lookBack(self, testVal):
         start = self.__position - 1
-        return (
-            start >= len(testVal)
-            and self.__input[start - len(testVal) : start].lower() == testVal
-        )
+        return start >= len(testVal) and self.__input[start - len(testVal) : start].lower() == testVal

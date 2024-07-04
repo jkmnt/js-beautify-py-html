@@ -50,10 +50,10 @@ class TokenizerPatterns:
 
 
 class Tokenizer:
-    def __init__(self, input_string, options):
+    def __init__(self, input_string: str, options):
         self._input = InputScanner(input_string)
         self._options = options
-        self.__tokens = None
+        self.__tokens: TokenStream
 
         self._patterns = TokenizerPatterns(self._input)
 
@@ -83,7 +83,7 @@ class Tokenizer:
             previous = current
         return self.__tokens
 
-    def __get_next_token_with_comments(self, previous, open_token):
+    def __get_next_token_with_comments(self, previous: Token, open_token: Token | None):
         current = self._get_next_token(previous, open_token)
 
         if self._is_comment(current):
@@ -108,7 +108,7 @@ class Tokenizer:
     def _reset(self):
         pass
 
-    def _get_next_token(self, previous_token, open_token):
+    def _get_next_token(self, previous_token: Token, open_token: Token | None):
         self._readWhitespace()
         resulting_string = self._input.read(re.compile(r".+"))
         if resulting_string:
@@ -125,7 +125,7 @@ class Tokenizer:
     def _is_closing(self, current_token, open_token):
         return False
 
-    def _create_token(self, token_type, text):
+    def _create_token(self, token_type: str, text: str | None):
         token = Token(
             token_type,
             text,
