@@ -212,7 +212,7 @@ class Output:
         self.indent_empty_lines = options.indent_empty_lines
         self.__lines = []
         self.previous_line = None
-        self.current_line = None
+        self.current_line: OutputLine | None  = None
         self.next_line = OutputLine(self)
         self.space_before_token = False
         self.non_breaking_space = False

@@ -22,11 +22,15 @@
 # CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
-__all__ = ["Pattern"]
 
 import re
 
-from .inputscanner import InputScanner
+import typing as t
+
+if t.TYPE_CHECKING:
+    from .inputscanner import InputScanner
+
+__all__ = ["Pattern"]
 
 Re = re.Pattern | str
 
