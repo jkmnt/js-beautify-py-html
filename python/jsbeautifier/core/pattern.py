@@ -32,7 +32,7 @@ if t.TYPE_CHECKING:
 
 __all__ = ["Pattern"]
 
-Re = re.Pattern | str
+Re = re.Pattern[str] | str
 
 
 class Pattern:

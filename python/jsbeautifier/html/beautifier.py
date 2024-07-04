@@ -32,16 +32,10 @@ import re
 
 from ..core.tokenstream import TokenStream
 from ..core.output import Output
-from ..core.token import Token as RawToken
+from ..core.token import Token
 
-# XXX: these are wrong options ! must be html-specific
-from ..core.options import Options
+from .options import Options, BaseOptions
 from .tokenizer import Tokenizer, TOKEN
-
-lineBreak = re.compile(r"\r\n|[\r\n]")
-# XXX: Wrong, there was global (multiline ?) mode
-# allLineBreaks = /\r\n|[\r\n]/g;
-allLineBreaks = re.compile(r"\r\n|[\r\n]", re.MULTILINE)
 
 # To be used for <p> tag special case:
 p_closers = [
@@ -99,10 +93,10 @@ class Printer:
         self._output.set_indent(self.indent_level, self.alignment_size)
         self._output.set_wrap_point()
 
-    def add_raw_token(self, token: RawToken):
+    def add_raw_token(self, token: Token):
         self._output.add_raw_token(token)
 
-    def print_preserved_newlines(self, raw_token: RawToken):
+    def print_preserved_newlines(self, raw_token: Token):
         newlines = 0
         if raw_token.type != TOKEN.TEXT and raw_token.previous and raw_token.previous.type != TOKEN.TEXT:
             newlines = 1 if raw_token.newlines else 0
@@ -119,7 +113,7 @@ class Printer:
 
         return newlines != 0
 
-    def traverse_whitespace(self, raw_token: RawToken):
+    def traverse_whitespace(self, raw_token: Token):
         if raw_token.whitespace_before or raw_token.newlines:
             if not self.print_preserved_newlines(raw_token):
                 self._output.space_before_token = True
@@ -131,10 +125,10 @@ class Printer:
     def previous_token_wrapped(self):
         return self._output.previous_token_wrapped
 
-    def print_newline(self, force):
+    def print_newline(self, force: bool):
         self._output.add_new_line(force)
 
-    def print_token(self, token):
+    def print_token(self, token: Token):
         if token.text:
             self._output.set_indent(self.indent_level, self.alignment_size)
             self._output.add_token(token.text)
@@ -147,7 +141,7 @@ class Printer:
             self.indent_level -= 1
             self._output.set_indent(self.indent_level, self.alignment_size)
 
-    def get_full_indent(self, level: int | None = None):
+    def get_full_indent(self, level: int | None = None) -> str:
         level = self.indent_level + (level or 0)
         if level < 1:
             return ""
@@ -155,7 +149,7 @@ class Printer:
         return self._output.get_indent_string(level)
 
 
-def get_type_attribute(start_token: RawToken):
+def get_type_attribute(start_token: Token):
     result = None
     raw_token = start_token.next
 
@@ -181,7 +175,7 @@ def get_type_attribute(start_token: RawToken):
     return result
 
 
-def get_custom_beautifier_name(tag_check, raw_token):
+def get_custom_beautifier_name(tag_check: str, raw_token: Token):
     typeAttribute = None
     result = None
 
@@ -218,11 +212,11 @@ def get_custom_beautifier_name(tag_check, raw_token):
 
 
 class TagFrame:
-    def __init__(self, parent, parser_token, indent_level):
+    def __init__(self, parent: "TagFrame" | None, parser_token: "TagOpenParserToken" | None = None, indent_level=0):
         self.parent = parent or None
         self.tag = parser_token.tag_name if parser_token else ""
-        self.indent_level = indent_level or 0
-        self.parser_token = parser_token or None
+        self.indent_level = indent_level
+        self.parser_token = parser_token
 
 
 class TagStack:
@@ -230,12 +224,12 @@ class TagStack:
         self._printer = printer
         self._current_frame: TagFrame | None = None
 
-    def get_parser_token(
-        self,
-    ):
+    def get_parser_token(self):
         return self._current_frame.parser_token if self._current_frame else None
 
-    def record_tag(self, parser_token):  # function to record a tag and its parent in self.tags Object
+    def record_tag(
+        self, parser_token: "TagOpenParserToken"
+    ):  # function to record a tag and its parent in self.tags Object
         new_frame = TagFrame(self._current_frame, parser_token, self._printer.indent_level)
         self._current_frame = new_frame
 
@@ -280,7 +274,7 @@ class TagStack:
 
 
 class TagOpenParserToken:
-    def __init__(self, options, parent=None, raw_token: RawToken | None = None):
+    def __init__(self, options: Options, parent: "TagOpenParserToken" | None = None, raw_token: Token | None = None):
         self.parent = parent
         self.text = ""
         self.type = "TK_TAG_OPEN"
@@ -294,13 +288,13 @@ class TagOpenParserToken:
         self.indent_content = False
         self.multiline_content = False
         self.custom_beautifier_name: str | None = None
-        self.start_tag_token = None
+        self.start_tag_token: TagOpenParserToken | None = None
         self.attr_count = 0
         self.has_wrapped_attrs = False
         self.alignment_size = 0
         self.tag_complete = False
         self.tag_start_char = ""
-        self.tag_check = ""
+        self.tag_check: str = ""
 
         if not raw_token:
             self.tag_complete = True
@@ -356,7 +350,7 @@ class TagOpenParserToken:
 
 
 class Beautifier:
-    def __init__(self, source_text, options, js_beautify, css_beautify):
+    def __init__(self, source_text: str | None, options: t.Mapping[str, t.Any] | None, js_beautify, css_beautify):
         # Wrapper function to invoke all the necessary constructors and deal with the output.
         self._source_text = source_text or ""
         options = options or {}
@@ -366,9 +360,14 @@ class Beautifier:
 
         #  Allow the setting of language/file-type specific options
         #  with inheritance of overall settings
-        optionHtml = Options(options, "html")
+        # optionHtml = Options(options, "html")
 
-        self._options: t.Any = optionHtml
+        # XXX: some inheritance here. Disabled for now
+        optionHtml = Options(options)
+
+        # self._options: t.Any = optionHtml
+
+        self._options = optionHtml
 
         self._is_wrap_attributes_force = self._options.wrap_attributes.startswith("force")
         self._is_wrap_attributes_force_expand_multiline = self._options.wrap_attributes == "force-expand-multiline"
@@ -387,18 +386,17 @@ class Beautifier:
         eol = self._options.eol
         if self._options.eol == "auto":
             eol = "\n"
-            if source_text:
-                m = lineBreak.search(source_text)
-                if m:
-                    eol = m[0]
+            m = re.search(r"\r\n|[\r\n]", source_text)
+            if m:
+                eol = m[0]
 
         #  HACK: newline parsing inconsistent. This brute force normalizes the input.
-        source_text = allLineBreaks.sub(source_text, "\n")
+        source_text = re.sub(r"\r\n|[\r\n]", "\n", source_text)
 
-        m = re.match(r"^[\t ]*", source_text)
+        m = re.search(r"^[\t ]*", source_text)
         baseIndentString = m[0] if m else ""
 
-        last_token = RawToken(text="", type="")
+        last_token = Token(text="", type="")
 
         last_tag_token = TagOpenParserToken(self._options)
 
@@ -413,7 +411,7 @@ class Beautifier:
 
             # make the typechecker happy (last token is always defined)
             if not last_token:
-                last_token = RawToken(text="", type="")
+                last_token = Token(text="", type="")
 
             if raw_token.type == TOKEN.TAG_OPEN or raw_token.type == TOKEN.COMMENT:
                 parser_token = self._handle_tag_open(printer, raw_token, last_tag_token, last_token, tokens)
@@ -442,33 +440,33 @@ class Beautifier:
 
         return sweet_code
 
-    def _handle_control_flow_open(self, printer: Printer, raw_token):
-        parser_token = RawToken(text=raw_token.text, type=raw_token.type)
+    def _handle_control_flow_open(self, printer: Printer, raw_token: Token):
+        parser_token = Token(text=raw_token.text, type=raw_token.type)
 
-        printer.set_space_before_token(raw_token.newlines or raw_token.whitespace_before != "", True)
+        printer.set_space_before_token(bool(raw_token.newlines) or raw_token.whitespace_before != "", True)
         if raw_token.newlines:
             printer.print_preserved_newlines(raw_token)
         else:
-            printer.set_space_before_token(raw_token.newlines or raw_token.whitespace_before != "", True)
+            printer.set_space_before_token(bool(raw_token.newlines) or raw_token.whitespace_before != "", True)
 
         printer.print_token(raw_token)
         printer.indent()
         return parser_token
 
-    def _handle_control_flow_close(self, printer: Printer, raw_token):
-        parser_token = RawToken(text=raw_token.text, type=raw_token.type)
+    def _handle_control_flow_close(self, printer: Printer, raw_token: Token):
+        parser_token = Token(text=raw_token.text, type=raw_token.type)
 
         printer.deindent()
         if raw_token.newlines:
             printer.print_preserved_newlines(raw_token)
         else:
-            printer.set_space_before_token(raw_token.newlines or raw_token.whitespace_before != "", True)
+            printer.set_space_before_token(bool(raw_token.newlines) or raw_token.whitespace_before != "", True)
 
         printer.print_token(raw_token)
         return parser_token
 
-    def _handle_tag_close(self, printer: Printer, raw_token: RawToken, last_tag_token: TagOpenParserToken):
-        parser_token = RawToken(text=raw_token.text, type=raw_token.type)
+    def _handle_tag_close(self, printer: Printer, raw_token: Token, last_tag_token: TagOpenParserToken):
+        parser_token = Token(text=raw_token.text, type=raw_token.type)
 
         printer.alignment_size = 0
         last_tag_token.tag_complete = True
@@ -503,12 +501,12 @@ class Beautifier:
     def _handle_inside_tag(
         self,
         printer: Printer,
-        raw_token: RawToken,
+        raw_token: Token,
         last_tag_token: TagOpenParserToken,
-        last_token: RawToken,
+        last_token: Token,
     ):
         wrapped = last_tag_token.has_wrapped_attrs
-        parser_token = RawToken(text=raw_token.text, type=raw_token.type)
+        parser_token = Token(text=raw_token.text, type=raw_token.type)
 
         printer.set_space_before_token(bool(raw_token.newlines) or raw_token.whitespace_before != "", True)
         if last_tag_token.is_unformatted:
@@ -556,8 +554,8 @@ class Beautifier:
 
         return parser_token
 
-    def _handle_text(self, printer: Printer, raw_token: RawToken, last_tag_token: TagOpenParserToken):
-        parser_token = RawToken(text=raw_token.text, type="TK_CONTENT")
+    def _handle_text(self, printer: Printer, raw_token: Token, last_tag_token: TagOpenParserToken):
+        parser_token = Token(text=raw_token.text, type="TK_CONTENT")
 
         if last_tag_token.custom_beautifier_name:  # { # check if we need to format javascript
             self._print_custom_beatifier_text(printer, raw_token, last_tag_token)
@@ -569,8 +567,8 @@ class Beautifier:
 
         return parser_token
 
-    def _print_custom_beatifier_text(self, printer: Printer, raw_token: RawToken, last_tag_token: TagOpenParserToken):
-        local = self
+    def _print_custom_beatifier_text(self, printer: Printer, raw_token: Token, last_tag_token: TagOpenParserToken):
+
         if raw_token.text != "":
 
             text = raw_token.text
@@ -651,12 +649,10 @@ class Beautifier:
                     #  simply indent the string otherwise
                     white = raw_token.whitespace_before
                     if white:
-                        # XXX: broken ?
-                        # text = text.replace(RegExp("\n(" + white + ")?", "g"), "\n")
+                        # XXX: RE: text = text.replace(RegExp("\n(" + white + ")?", "g"), "\n")
                         text = re.sub(rf"\n({ white })?", "\n", text)
 
-                    # XXX: broken
-                    # text = indentation + text.replace(r"\n"g, '\n' + indentation);
+                    # XXX: # text = indentation + text.replace(r"\n"g, '\n' + indentation);
                     text = indentation + text.replace(r"\n", "\n" + indentation)
 
             if pre:
@@ -676,9 +672,9 @@ class Beautifier:
     def _handle_tag_open(
         self,
         printer: Printer,
-        raw_token: RawToken,
+        raw_token: Token,
         last_tag_token: TagOpenParserToken,
-        last_token: RawToken,
+        last_token: Token,
         tokens: TokenStream,
     ):
         parser_token = self._get_tag_open_token(raw_token)
@@ -737,7 +733,7 @@ class Beautifier:
 
         return parser_token
 
-    def _get_tag_open_token(self, raw_token: RawToken):  # function to get a full tag and parse its type
+    def _get_tag_open_token(self, raw_token: Token):  # function to get a full tag and parse its type
         parser_token = TagOpenParserToken(self._options, self._tag_stack.get_parser_token(), raw_token)
 
         parser_token.alignment_size = self._options.wrap_attributes_indent_size
@@ -767,10 +763,10 @@ class Beautifier:
     def _set_tag_position(
         self,
         printer: Printer,
-        raw_token: RawToken,
+        raw_token: Token,
         parser_token: TagOpenParserToken,
         last_tag_token: TagOpenParserToken,
-        last_token,
+        last_token: Token,
     ):
 
         if not parser_token.is_empty_element:
@@ -863,7 +859,7 @@ class Beautifier:
 
             self._calcluate_parent_multiline(printer, parser_token)
 
-    def _calcluate_parent_multiline(self, printer: Printer, parser_token):
+    def _calcluate_parent_multiline(self, printer: Printer, parser_token: TagOpenParserToken):
         if (
             parser_token.parent
             and printer._output.just_added_newline()
@@ -874,7 +870,7 @@ class Beautifier:
         ):
             parser_token.parent.multiline_content = True
 
-    def _do_optional_end_element(self, parser_token):
+    def _do_optional_end_element(self, parser_token: TagOpenParserToken):
         result = None
         #  NOTE: cases of "if there is no more content in the parent element"
         #  are handled automatically by the beautifier.

@@ -38,6 +38,8 @@ from ..core.directives import Directives
 from ..core.pattern import Pattern
 from ..core.templatablepattern import TemplatablePattern
 
+from .options import Options
+
 
 class TokenTypes(BaseTokenTypes):
     TAG_OPEN = "TK_TAG_OPEN"
@@ -82,9 +84,10 @@ class TokenizerPatterns:
 
 
 class Tokenizer(BaseTokenizer):
-    def __init__(self, input_string, options):
+    def __init__(self, input_string, options: Options):
         super().__init__(input_string, options)
         self._current_tag_name = ""
+        self._options: Options
 
         # Words end at whitespace or when a tag starts
         # if we are indenting handlebars, they are considered tags
@@ -251,7 +254,7 @@ class Tokenizer(BaseTokenizer):
         token = None
         if not open_token or open_token.type == TOKEN.CONTROL_FLOW_OPEN:
             if (
-                (self._options.templating.includes("angular") or self._options.indent_handlebars)
+                ("angular" in self._options.templating or self._options.indent_handlebars)
                 and c == "{"
                 and self._input.peek(1) == "{"
             ):
@@ -269,7 +272,7 @@ class Tokenizer(BaseTokenizer):
         resulting_string = ""
         token = None
         # Only check for control flows if angular templating is set
-        if not self._options.templating.includes("angular"):
+        if "angular" not in self._options.templating:
             return token
 
         if c == "@":
@@ -346,9 +349,8 @@ class Tokenizer(BaseTokenizer):
         # void_elements have no content and so cannot have unformatted content
         # script and style tags should always be read as unformatted content
         # finally content_unformatted and unformatted element contents are unformatted
-        return self._options.void_elements.indexOf(tag_name) == -1 and (
-            self._options.content_unformatted.indexOf(tag_name) != -1
-            or self._options.unformatted.indexOf(tag_name) != -1
+        return tag_name not in self._options.void_elements and tag_name in (
+            self._options.content_unformatted + self._options.unformatted
         )
 
     def _read_raw_content(self, c, previous_token: Token, open_token: Token | None):
