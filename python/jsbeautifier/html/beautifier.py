@@ -30,6 +30,7 @@ import typing as t
 
 import re
 
+from ..core.tokenstream import TokenStream
 from ..core.output import Output
 from ..core.token import Token as RawToken
 
@@ -376,9 +377,7 @@ class Beautifier:
         self._is_wrap_attributes_preserve = self._options.wrap_attributes.startswith("preserve")
         self._is_wrap_attributes_preserve_aligned = self._options.wrap_attributes == "preserve-aligned"
 
-    def beautify(
-        self,
-    ):
+    def beautify(self):
 
         #  if disabled, return the input unchanged.
         if self._options.disabled:
@@ -399,10 +398,7 @@ class Beautifier:
         m = re.match(r"^[\t ]*", source_text)
         baseIndentString = m[0] if m else ""
 
-        last_token = {
-            "text": "",
-            "type": "",
-        }
+        last_token = RawToken(text="", type="")
 
         last_tag_token = TagOpenParserToken(self._options)
 
@@ -414,6 +410,10 @@ class Beautifier:
         parser_token = None
         raw_token = tokens.next()
         while raw_token.type != TOKEN.EOF:
+
+            # make the typechecker happy (last token is always defined)
+            if not last_token:
+                last_token = RawToken(text="", type="")
 
             if raw_token.type == TOKEN.TAG_OPEN or raw_token.type == TOKEN.COMMENT:
                 parser_token = self._handle_tag_open(printer, raw_token, last_tag_token, last_token, tokens)
@@ -443,7 +443,7 @@ class Beautifier:
         return sweet_code
 
     def _handle_control_flow_open(self, printer: Printer, raw_token):
-        parser_token = {"text": raw_token.text, "type": raw_token.type}
+        parser_token = RawToken(text=raw_token.text, type=raw_token.type)
 
         printer.set_space_before_token(raw_token.newlines or raw_token.whitespace_before != "", True)
         if raw_token.newlines:
@@ -456,7 +456,7 @@ class Beautifier:
         return parser_token
 
     def _handle_control_flow_close(self, printer: Printer, raw_token):
-        parser_token = {"text": raw_token.text, "type": raw_token.type}
+        parser_token = RawToken(text=raw_token.text, type=raw_token.type)
 
         printer.deindent()
         if raw_token.newlines:
@@ -468,7 +468,7 @@ class Beautifier:
         return parser_token
 
     def _handle_tag_close(self, printer: Printer, raw_token: RawToken, last_tag_token: TagOpenParserToken):
-        parser_token = {"text": raw_token.text, "type": raw_token.type}
+        parser_token = RawToken(text=raw_token.text, type=raw_token.type)
 
         printer.alignment_size = 0
         last_tag_token.tag_complete = True
@@ -500,9 +500,15 @@ class Beautifier:
 
         return parser_token
 
-    def _handle_inside_tag(self, printer: Printer, raw_token: RawToken, last_tag_token: TagOpenParserToken, last_token):
+    def _handle_inside_tag(
+        self,
+        printer: Printer,
+        raw_token: RawToken,
+        last_tag_token: TagOpenParserToken,
+        last_token: RawToken,
+    ):
         wrapped = last_tag_token.has_wrapped_attrs
-        parser_token = {"text": raw_token.text, "type": raw_token.type}
+        parser_token = RawToken(text=raw_token.text, type=raw_token.type)
 
         printer.set_space_before_token(bool(raw_token.newlines) or raw_token.whitespace_before != "", True)
         if last_tag_token.is_unformatted:
@@ -551,7 +557,7 @@ class Beautifier:
         return parser_token
 
     def _handle_text(self, printer: Printer, raw_token: RawToken, last_tag_token: TagOpenParserToken):
-        parser_token = {"text": raw_token.text, "type": "TK_CONTENT"}
+        parser_token = RawToken(text=raw_token.text, type="TK_CONTENT")
 
         if last_tag_token.custom_beautifier_name:  # { # check if we need to format javascript
             self._print_custom_beatifier_text(printer, raw_token, last_tag_token)
@@ -668,7 +674,12 @@ class Beautifier:
                 printer.print_newline(True)
 
     def _handle_tag_open(
-        self, printer: Printer, raw_token: RawToken, last_tag_token: TagOpenParserToken, last_token, tokens
+        self,
+        printer: Printer,
+        raw_token: RawToken,
+        last_tag_token: TagOpenParserToken,
+        last_token: RawToken,
+        tokens: TokenStream,
     ):
         parser_token = self._get_tag_open_token(raw_token)
 
@@ -696,6 +707,7 @@ class Beautifier:
             # peek_token;
             while True:
                 peek_token = tokens.peek(peek_index)
+                assert peek_token
                 if peek_token.type == TOKEN.ATTRIBUTE:
                     parser_token.attr_count += 1
                 peek_index += 1
@@ -704,6 +716,7 @@ class Beautifier:
 
             while True:
                 peek_token = tokens.peek(peek_index)
+                assert peek_token
                 if peek_token.type == TOKEN.ATTRIBUTE:
                     parser_token.attr_count += 1
 
@@ -752,7 +765,12 @@ class Beautifier:
         return parser_token
 
     def _set_tag_position(
-        self, printer: Printer, raw_token: RawToken, parser_token: TagOpenParserToken, last_tag_token, last_token
+        self,
+        printer: Printer,
+        raw_token: RawToken,
+        parser_token: TagOpenParserToken,
+        last_tag_token: TagOpenParserToken,
+        last_token,
     ):
 
         if not parser_token.is_empty_element:
