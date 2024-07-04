@@ -90,7 +90,7 @@ class Printer:
     def current_line_has_match(self, pattern: str):
         return self._output.current_line and self._output.current_line.has_match(pattern)
 
-    def set_space_before_token(self, value: bool, non_breaking: bool | None = None):
+    def set_space_before_token(self, value: bool, non_breaking=False):
         self._output.space_before_token = value
         self._output.non_breaking_space = non_breaking
 
@@ -292,7 +292,7 @@ class TagOpenParserToken:
         self.is_end_tag = False
         self.indent_content = False
         self.multiline_content = False
-        self.custom_beautifier_name = None
+        self.custom_beautifier_name: str | None = None
         self.start_tag_token = None
         self.attr_count = 0
         self.has_wrapped_attrs = False
@@ -827,7 +827,8 @@ class Beautifier:
                 printer.print_newline(False)
 
         else:  #  it's a start-tag
-            parser_token.indent_content = parser_token.custom_beautifier_name
+            # XXX: ?
+            parser_token.indent_content = bool(parser_token.custom_beautifier_name)
 
             if parser_token.tag_start_char == "<":
                 if parser_token.tag_name == "html":

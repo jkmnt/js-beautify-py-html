@@ -42,7 +42,16 @@ class OutputLine:
         self.__wrap_point_indent_count = -1
         self.__wrap_point_alignment_count = 0
 
-        self.__items = []
+        self.__items: list[str] = []
+
+    # XXX: Broken
+    def has_match(self, pattern: str):
+        # there was a decrementing for-loop, mimic it. maybe the order is important
+        for item in self.__items[::-1]:
+            if re.search(pattern, item):
+                return True
+
+        return False
 
     def clone_empty(self):
         line = OutputLine(self.__parent)
@@ -59,40 +68,31 @@ class OutputLine:
         if self.is_empty():
             self.__indent_count = indent
             self.__alignment_count = alignment
-            self.__character_count = self.__parent.get_indent_size(
-                self.__indent_count, self.__alignment_count
-            )
+            self.__character_count = self.__parent.get_indent_size(self.__indent_count, self.__alignment_count)
 
     def _set_wrap_point(self):
         if self.__parent.wrap_line_length:
             self.__wrap_point_index = len(self.__items)
             self.__wrap_point_character_count = self.__character_count
             self.__wrap_point_indent_count = self.__parent.next_line.__indent_count
-            self.__wrap_point_alignment_count = (
-                self.__parent.next_line.__alignment_count
-            )
+            self.__wrap_point_alignment_count = self.__parent.next_line.__alignment_count
 
     def _should_wrap(self):
         return (
             self.__wrap_point_index
             and self.__character_count > self.__parent.wrap_line_length
-            and self.__wrap_point_character_count
-            > self.__parent.next_line.__character_count
+            and self.__wrap_point_character_count > self.__parent.next_line.__character_count
         )
 
     def _allow_wrap(self):
         if self._should_wrap():
             self.__parent.add_new_line()
             next = self.__parent.current_line
-            next.set_indent(
-                self.__wrap_point_indent_count, self.__wrap_point_alignment_count
-            )
+            next.set_indent(self.__wrap_point_indent_count, self.__wrap_point_alignment_count)
             next.__items = self.__items[self.__wrap_point_index :]
             self.__items = self.__items[: self.__wrap_point_index]
 
-            next.__character_count += (
-                self.__character_count - self.__wrap_point_character_count
-            )
+            next.__character_count += self.__character_count - self.__wrap_point_character_count
             self.__character_count = self.__wrap_point_character_count
 
             if next.__items[0] == " ":
@@ -144,9 +144,7 @@ class OutputLine:
             if self.__parent.indent_empty_lines:
                 result = self.__parent.get_indent_string(self.__indent_count)
         else:
-            result = self.__parent.get_indent_string(
-                self.__indent_count, self.__alignment_count
-            )
+            result = self.__parent.get_indent_string(self.__indent_count, self.__alignment_count)
             result += "".join(self.__items)
         return result
 
@@ -212,7 +210,7 @@ class Output:
         self.indent_empty_lines = options.indent_empty_lines
         self.__lines = []
         self.previous_line = None
-        self.current_line: OutputLine | None  = None
+        self.current_line: OutputLine | None = None
         self.next_line = OutputLine(self)
         self.space_before_token = False
         self.non_breaking_space = False
@@ -332,9 +330,7 @@ class Output:
         return self.current_line.is_empty()
 
     def just_added_blankline(self):
-        return self.is_empty() or (
-            self.current_line.is_empty() and self.previous_line.is_empty()
-        )
+        return self.is_empty() or (self.current_line.is_empty() and self.previous_line.is_empty())
 
     def ensure_empty_line_above(self, starts_with, ends_with):
         index = len(self.__lines) - 2
@@ -342,10 +338,7 @@ class Output:
             potentialEmptyLine = self.__lines[index]
             if potentialEmptyLine.is_empty():
                 break
-            elif (
-                not potentialEmptyLine.item(0).startswith(starts_with)
-                and potentialEmptyLine.item(-1) != ends_with
-            ):
+            elif not potentialEmptyLine.item(0).startswith(starts_with) and potentialEmptyLine.item(-1) != ends_with:
                 self.__lines.insert(index + 1, OutputLine(self))
                 self.previous_line = self.__lines[-2]
                 break
