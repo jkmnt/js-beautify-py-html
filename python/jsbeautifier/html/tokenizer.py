@@ -271,7 +271,7 @@ class Tokenizer(BaseTokenizer):
             # e.g. @if({value: true} !== null) {
             while not (resulting_string.endswith("{") and opening_parentheses_count == closing_parentheses_count):
                 next_char = self._input.next()
-                if next_char == None:
+                if next_char is None:
                     break
                 elif next_char == "(":
                     opening_parentheses_count += 1

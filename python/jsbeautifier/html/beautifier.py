@@ -310,7 +310,7 @@ class TagOpenParserToken:
                 if (raw_token.text.startswith("{{#>") or raw_token.text.startswith("{{~#>")) and (
                     self.tag_check[0:1] == ">"
                 ):
-                    if self.tag_check == ">" and raw_token.next != None:
+                    if self.tag_check == ">" and raw_token.next is not None:
                         self.tag_check = raw_token.next.text.split(" ")[0]
                     else:
                         self.tag_check = raw_token.text.split(">")[1]
