@@ -27,6 +27,7 @@
 
 
 from dataclasses import dataclass
+import re
 
 from ..core.inputscanner import InputScanner
 from ..core.tokenizer import Token
@@ -76,7 +77,6 @@ class TokenizerPatterns:
     handlebars_raw_close: Pattern
     comment: Pattern
     cdata: Pattern
-    # https:#en.wikipedia.org/wiki/Conditional_comment
     conditional_comment: Pattern
     processing: Pattern
 
@@ -108,29 +108,14 @@ class Tokenizer(BaseTokenizer):
             handlebars_raw_close=pattern_reader.until(r"}}"),
             comment=pattern_reader.starting_with(r"<!--").until_after(r"-->"),
             cdata=pattern_reader.starting_with(r"<!\[CDATA\[").until_after(r"]]>"),
+            # https:#en.wikipedia.org/wiki/Conditional_comment
             conditional_comment=pattern_reader.starting_with(r"<!\[").until_after(r"]>"),
             processing=pattern_reader.starting_with(r"<\?").until_after(r"\?>"),
             unformatted_content_delimiter=None,
         )
 
-        # word= templatable_reader.until(/[\n\r\t <]/),
-        # word_control_flow_close_excluded= templatable_reader.until(/[\n\r\t <}]/),
-        # single_quote= templatable_reader.until_after(/'/),
-        # double_quote= templatable_reader.until_after(/"/),
-        # attribute= templatable_reader.until(/[\n\r\t =>]|\/>/),
-        # element_name= templatable_reader.until(/[\n\r\t >\/]/),
-        # angular_control_flow_start= pattern_reader.matching(/\@[a-zA-Z]+[^({]*[({]/),
-        # handlebars_comment= pattern_reader.starting_with(/{{!--/).until_after(/--}}/),
-        # handlebars= pattern_reader.starting_with(/{{/).until_after(/}}/),
-        # handlebars_open= pattern_reader.until(/[\n\r\t }]/),
-        # handlebars_raw_close= pattern_reader.until(/}}/),
-        # comment= pattern_reader.starting_with(/<!--/).until_after(/-->/),
-        # cdata= pattern_reader.starting_with(/<!\[CDATA\[/).until_after(/]]>/),
-        # conditional_comment= pattern_reader.starting_with(/<!\[/).until_after(/]>/),
-        # processing= pattern_reader.starting_with(/<\?/).until_after(/\?>/),
-
         if self._options.indent_handlebars:
-            #  XXX: exclude is missing from Pattern
+            #  NOTE: assuming the Pattern is TemplatablePattern, not the base Pattern
             assert isinstance(self.__patterns.word, TemplatablePattern)
             assert isinstance(self.__patterns.word_control_flow_close_excluded, TemplatablePattern)
             self.__patterns.word = self.__patterns.word.exclude("handlebars")
@@ -157,8 +142,8 @@ class Tokenizer(BaseTokenizer):
             and (
                 open_token
                 and (
-                    ((current_token.text == ">" or current_token.text == "/>") and open_token.text[0] == "<")
-                    or (current_token.text == "}}" and open_token.text[0] == "{" and open_token.text[1] == "{")
+                    ((current_token.text == ">" or current_token.text == "/>") and open_token.text[0:1] == "<")
+                    or (current_token.text == "}}" and open_token.text[0:1] == "{" and open_token.text[1:2] == "{")
                 )
             )
         ) or (
@@ -174,7 +159,7 @@ class Tokenizer(BaseTokenizer):
         self._readWhitespace()
         c = self._input.peek()
 
-        if c == None:
+        if c is None:
             return self._create_token(TOKEN.EOF, "")
 
         token = token or self._read_open_handlebars(c, open_token)
@@ -283,7 +268,7 @@ class Tokenizer(BaseTokenizer):
             opening_parentheses_count = 1 if resulting_string.endswith("(") else 0
             closing_parentheses_count = 0
             # The opening brace of the control flow is where the number of opening and closing parentheses equal
-            # e.g. @if({value: true} !== None) {
+            # e.g. @if({value: true} !== null) {
             while not (resulting_string.endswith("{") and opening_parentheses_count == closing_parentheses_count):
                 next_char = self._input.next()
                 if next_char == None:
@@ -292,9 +277,7 @@ class Tokenizer(BaseTokenizer):
                     opening_parentheses_count += 1
                 elif next_char == ")":
                     closing_parentheses_count += 1
-
                 resulting_string += next_char
-
             token = self._create_token(TOKEN.CONTROL_FLOW_OPEN, resulting_string)
         elif c == "}" and open_token and open_token.type == TOKEN.CONTROL_FLOW_OPEN:
             resulting_string = self._input.next()
@@ -306,13 +289,12 @@ class Tokenizer(BaseTokenizer):
         resulting_string = None
         token = None
         if open_token and open_token.type == TOKEN.TAG_OPEN:
-            if open_token.text[0] == "<" and (c == ">" or (c == "/" and self._input.peek(1) == ">")):
+            if open_token.text[0:1] == "<" and (c == ">" or (c == "/" and self._input.peek(1) == ">")):
                 resulting_string = self._input.next()
                 if c == "/":  #  for close tag "/>"
                     resulting_string += self._input.next()
-
                 token = self._create_token(TOKEN.TAG_CLOSE, resulting_string)
-            elif open_token.text[0] == "{" and c == "}" and self._input.peek(1) == "}":
+            elif open_token.text[0:1] == "{" and c == "}" and self._input.peek(1) == "}":
                 self._input.next()
                 self._input.next()
                 token = self._create_token(TOKEN.TAG_CLOSE, "}}")
@@ -322,7 +304,7 @@ class Tokenizer(BaseTokenizer):
     def _read_attribute(self, c, previous_token: Token, open_token: Token | None):
         token = None
         resulting_string = ""
-        if open_token and open_token.text[0] == "<":
+        if open_token and open_token.text[0:1] == "<":
 
             if c == "=":
                 token = self._create_token(TOKEN.EQUALS, self._input.next())
@@ -349,26 +331,25 @@ class Tokenizer(BaseTokenizer):
         # void_elements have no content and so cannot have unformatted content
         # script and style tags should always be read as unformatted content
         # finally content_unformatted and unformatted element contents are unformatted
-        return tag_name not in self._options.void_elements and tag_name in (
-            self._options.content_unformatted + self._options.unformatted
+        return tag_name not in self._options.void_elements and (
+            tag_name in self._options.content_unformatted or tag_name in self._options.unformatted
         )
 
     def _read_raw_content(self, c, previous_token: Token, open_token: Token | None):
         resulting_string = ""
-        if open_token and open_token.text[0] == "{":
+        if open_token and open_token.text[0:1] == "{":
             resulting_string = self.__patterns.handlebars_raw_close.read()
         elif (
             previous_token.type == TOKEN.TAG_CLOSE
             and previous_token.opened
-            and previous_token.opened.text[0] == "<"
-            and previous_token.text[0] != "/"
+            and previous_token.opened.text[0:1] == "<"
+            and previous_token.text[0:1] != "/"
         ):
             # ^^ empty tag has no content
             tag_name = previous_token.opened.text[1:].lower()
             if self._is_content_unformatted(tag_name):
-                # XXX: disabled
-                # resulting_string = self._input.readUntil(re.'{}' RegExp('</' + tag_name + '[\\n\\r\\t ]*?>', 'ig'));
-                resulting_string = ""
+                # XXX: RE: resulting_string = this._input.readUntil(new RegExp('</' + tag_name + '[\\n\\r\\t ]*?>', 'ig'));
+                resulting_string = self._input.readUntil(re.compile(rf"</{ tag_name }[\n\r\t ]*?>", re.IGNORECASE))
 
         if resulting_string:
             return self._create_token(TOKEN.TEXT, resulting_string)
@@ -379,8 +360,8 @@ class Tokenizer(BaseTokenizer):
         if (
             previous_token.type == TOKEN.TAG_CLOSE
             and previous_token.opened
-            and previous_token.opened.text[0] == "<"
-            and previous_token.text[0] != "/"
+            and previous_token.opened.text[0:1] == "<"
+            and previous_token.text[0:1] != "/"
         ):
             tag_name = previous_token.opened.text[1:].lower()
             if tag_name == "script" or tag_name == "style":
@@ -390,10 +371,8 @@ class Tokenizer(BaseTokenizer):
                 if token:
                     token.type = TOKEN.TEXT
                     return token
-
-                # XXX: disabled for now
-                # resulting_string = self._input.readUntil(new RegExp('</' + tag_name + '[\\n\\r\\t ]*?>', 'ig'));
-                resulting_string = ""
+                # XXX: RE: resulting_string = self._input.readUntil(new RegExp('</' + tag_name + '[\\n\\r\\t ]*?>', 'ig'));
+                resulting_string = self._input.readUntil(re.compile(rf"</{ tag_name }[\n\r\t ]*?>", re.IGNORECASE))
                 if resulting_string:
                     return self._create_token(TOKEN.TEXT, resulting_string)
 

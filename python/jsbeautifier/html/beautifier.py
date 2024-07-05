@@ -39,6 +39,7 @@ from ..core.token import Token
 from .options import Options, BaseOptions
 from .tokenizer import Tokenizer, TOKEN
 
+# NOTE: moved here. in js they was near the middle of the file
 # To be used for <p> tag special case:
 p_closers = [
     "address",
@@ -79,8 +80,8 @@ class Printer:
 
         self.indent_level = 0
         self.alignment_size = 0
-        self.max_preserve_newlines = options.max_preserve_newlines
-        self.preserve_newlines = options.preserve_newlines
+        self.max_preserve_newlines: int = options.max_preserve_newlines
+        self.preserve_newlines: int = options.preserve_newlines
 
         self._output = Output(options, base_indent_string)
 
@@ -155,8 +156,7 @@ def get_type_attribute(start_token: Token):
     result = None
     raw_token = start_token.next
 
-    if not raw_token:
-        return None
+    assert raw_token  # make typechecker happy
 
     #  Search attributes for a type attribute
     while raw_token.type != TOKEN.EOF and start_token.closed != raw_token:
@@ -168,11 +168,9 @@ def get_type_attribute(start_token: Token):
                 and raw_token.next.next.type == TOKEN.VALUE
             ):
                 result = raw_token.next.next.text
-
             break
-
         raw_token = raw_token.next
-        assert raw_token
+        assert raw_token  # make typechecker happy
 
     return result
 
@@ -191,9 +189,7 @@ def get_custom_beautifier_name(tag_check: str, raw_token: Token):
 
     typeAttribute = get_type_attribute(raw_token) or typeAttribute
 
-    # XXX: it is right ?
-    if not typeAttribute:
-        return None
+    assert typeAttribute  # typechecker happy
 
     #  For script and style tags that have a type attribute, only enable custom beautifiers for matching values
     #  For those without a type attribute use default;
@@ -215,7 +211,7 @@ def get_custom_beautifier_name(tag_check: str, raw_token: Token):
 
 class TagFrame:
     def __init__(self, parent: "TagFrame" | None, parser_token: "TagOpenParserToken" | None = None, indent_level=0):
-        self.parent = parent or None
+        self.parent = parent
         self.tag = parser_token.tag_name if parser_token else ""
         self.indent_level = indent_level
         self.parser_token = parser_token
@@ -229,15 +225,13 @@ class TagStack:
     def get_parser_token(self):
         return self._current_frame.parser_token if self._current_frame else None
 
-    def record_tag(
-        self, parser_token: "TagOpenParserToken"
-    ):  # function to record a tag and its parent in self.tags Object
+    def record_tag(self, parser_token: "TagOpenParserToken"):
+        # function to record a tag and its parent in self.tags Object
         new_frame = TagFrame(self._current_frame, parser_token, self._printer.indent_level)
         self._current_frame = new_frame
 
-    def _try_pop_frame(
-        self, frame: TagFrame | None
-    ):  # function to retrieve the opening tag to the corresponding closer
+    def _try_pop_frame(self, frame: TagFrame | None):
+        # function to retrieve the opening tag to the corresponding closer
         parser_token = None
 
         if frame:
@@ -247,9 +241,8 @@ class TagStack:
 
         return parser_token
 
-    def _get_frame(
-        self, tag_list: list[str], stop_list: list[str] | None = None
-    ):  # function to retrieve the opening tag to the corresponding closer
+    def _get_frame(self, tag_list: list[str], stop_list: list[str] | None = None):
+        # function to retrieve the opening tag to the corresponding closer
         frame = self._current_frame
 
         while frame:  # till we reach '' (the initial value);
@@ -258,14 +251,12 @@ class TagStack:
             elif stop_list and frame.tag in stop_list:
                 frame = None
                 break
-
             frame = frame.parent
 
         return frame
 
-    def try_pop(
-        self, tag: str, stop_list: list[str] | None = None
-    ):  # function to retrieve the opening tag to the corresponding closer
+    def try_pop(self, tag: str, stop_list: list[str] | None = None):
+        # function to retrieve the opening tag to the corresponding closer
         frame = self._get_frame([tag], stop_list)
         return self._try_pop_frame(frame)
 
@@ -303,22 +294,22 @@ class TagOpenParserToken:
         else:
             # tag_check_match;
 
-            self.tag_start_char = raw_token.text[:1]
+            self.tag_start_char = raw_token.text[0:1]
             self.text = raw_token.text
 
             if self.tag_start_char == "<":
                 # XXX: RE: tag_check_match = raw_token.text.match(r"^<([^\s>]*)")
                 tag_check_match = re.search(r"^<([^\s>]*)", raw_token.text)
-                self.tag_check = tag_check_match[1] if tag_check_match else ""
+                self.tag_check = tag_check_match.group(1) if tag_check_match else ""
             else:
                 # XXX: RE: tag_check_match = raw_token.text.match(r"^{{~?(?:[\^]|#\*?)?([^\s}]+)")
                 tag_check_match = re.search(r"^{{~?(?:[\^]|#\*?)?([^\s}]+)", raw_token.text)
-                self.tag_check = tag_check_match[1] if tag_check_match else ""
+                self.tag_check = tag_check_match.group(1) if tag_check_match else ""
 
                 #  handle "{{#> myPartial}}" or "{{~#> myPartial}}"
-                if (raw_token.text.startswith("{{#>") or raw_token.text.startswith("{{~#>")) and self.tag_check[
-                    0
-                ] == ">":
+                if (raw_token.text.startswith("{{#>") or raw_token.text.startswith("{{~#>")) and (
+                    self.tag_check[0:1] == ">"
+                ):
                     if self.tag_check == ">" and raw_token.next != None:
                         self.tag_check = raw_token.next.text.split(" ")[0]
                     else:
@@ -329,14 +320,14 @@ class TagOpenParserToken:
             if raw_token.type == TOKEN.COMMENT:
                 self.tag_complete = True
 
-            self.is_start_tag = self.tag_check[:1] != "/"
+            self.is_start_tag = self.tag_check[0:1] != "/"
             self.tag_name = self.tag_check[1:] if not self.is_start_tag else self.tag_check
             self.is_end_tag = not self.is_start_tag or (raw_token.closed and raw_token.closed.text == "/>")
 
             #  if whitespace handler ~ included (i.e. {{~#if true}}), handlebars tags start at pos 3 not pos 2
             handlebar_starts = 2
             if self.tag_start_char == "{" and len(self.text) >= 3:
-                if self.text[2] == "~":
+                if self.text[2:3] == "~":
                     handlebar_starts = 3
 
             #  handlebars tags that don't start with # or ^ are single_tags, and so also start and end.
@@ -369,8 +360,6 @@ class Beautifier:
         # XXX: some inheritance here. Disabled for now
         optionHtml = Options(options)
 
-        # self._options: t.Any = optionHtml
-
         self._options = optionHtml
 
         self._is_wrap_attributes_force = self._options.wrap_attributes.startswith("force")
@@ -381,7 +370,6 @@ class Beautifier:
         self._is_wrap_attributes_preserve_aligned = self._options.wrap_attributes == "preserve-aligned"
 
     def beautify(self):
-
         #  if disabled, return the input unchanged.
         if self._options.disabled:
             return self._source_text
@@ -412,11 +400,7 @@ class Beautifier:
         parser_token = None
         raw_token = tokens.next()
         while raw_token.type != TOKEN.EOF:
-
-            # make the typechecker happy (last token is always defined)
-            if not last_token:
-                assert False
-                last_token = Token(text="", type="")
+            assert last_token  # happy typechech
 
             if raw_token.type == TOKEN.TAG_OPEN or raw_token.type == TOKEN.COMMENT:
                 parser_token = self._handle_tag_open(printer, raw_token, last_tag_token, last_token, tokens)
@@ -453,7 +437,6 @@ class Beautifier:
             printer.print_preserved_newlines(raw_token)
         else:
             printer.set_space_before_token(bool(raw_token.newlines) or raw_token.whitespace_before != "", True)
-
         printer.print_token(raw_token)
         printer.indent()
         return parser_token
@@ -481,8 +464,7 @@ class Beautifier:
             printer.add_raw_token(raw_token)
         else:
             if last_tag_token.tag_start_char == "<":
-                printer.set_space_before_token(raw_token.text[0] == "/", True)
-                #  space before />, no space before >
+                printer.set_space_before_token(raw_token.text[0:1] == "/", True)  #  space before />, no space before >
                 if self._is_wrap_attributes_force_expand_multiline and last_tag_token.has_wrapped_attrs:
                     printer.print_newline(False)
 
@@ -523,11 +505,11 @@ class Beautifier:
                 printer.add_raw_token(raw_token)
             else:
                 printer.print_token(raw_token)
-
         else:
             if raw_token.type == TOKEN.ATTRIBUTE:
                 printer.set_space_before_token(True)
-            elif raw_token.type == TOKEN.EQUALS:  # no space before =
+            elif raw_token.type == TOKEN.EQUALS:
+                # no space before =
                 printer.set_space_before_token(False)
             elif (
                 raw_token.type == TOKEN.VALUE and raw_token.previous and raw_token.previous.type == TOKEN.EQUALS
@@ -562,7 +544,8 @@ class Beautifier:
     def _handle_text(self, printer: Printer, raw_token: Token, last_tag_token: TagOpenParserToken):
         parser_token = Token(text=raw_token.text, type="TK_CONTENT")
 
-        if last_tag_token.custom_beautifier_name:  # check if we need to format javascript
+        if last_tag_token.custom_beautifier_name:
+            # check if we need to format javascript
             self._print_custom_beatifier_text(printer, raw_token, last_tag_token)
         elif last_tag_token.is_unformatted or last_tag_token.is_content_unformatted:
             printer.add_raw_token(raw_token)
@@ -604,12 +587,12 @@ class Beautifier:
 
             #  if there is at least one empty line at the end of this text, strip it
             #  we'll be adding one back after the text but before the containing tag.
-            text = text.replace(r"\n[ \t]*$", "")
+            text = re.sub(r"\n[ \t]*$", "", text, count=1)
 
             #  Handle the case where content is wrapped in a comment or cdata.
             if (
                 last_tag_token.custom_beautifier_name != "html"
-                and text[0] == "<"
+                and text[0:1] == "<"
                 # XXX:RE and text.match(r"^(<!--|<!\[CDATA\[)")
                 and re.search(r"^(<!--|<!\[CDATA\[)", text)
             ):
@@ -621,26 +604,26 @@ class Beautifier:
                     printer.add_raw_token(raw_token)
                     return
 
-                pre = indentation + matched[1] + "\n"
-                text = matched[4]
-                if matched[5]:
-                    post = indentation + matched[5]
+                pre = indentation + matched.group(1) + "\n"
+                text = matched.group(4)
+                if matched.group(5):
+                    post = indentation + matched.group(5)
 
                 #  if there is at least one empty line at the end of this text, strip it
                 #  we'll be adding one back after the text but before the containing tag.
-                text = text.replace(r"\n[ \t]*$", "")
+                text = re.sub(r"\n[ \t]*$", "", text, count=1)
 
-                if matched[2] or "\n" in matched[3]:
+                if matched.group(2) or "\n" in matched.group(3):
                     #  if the first line of the non-comment text has spaces
                     #  use that as the basis for indenting in null case.
                     # XXX: RE matched = matched[3].match(r"[ \t]+$")
-                    matched = re.search(r"[ \t]+$", matched[3])
+                    matched = re.search(r"[ \t]+$", matched.group(3))
                     if matched:
-                        raw_token.whitespace_before = matched[0]
+                        raw_token.whitespace_before = matched.group(0)
 
             if text:
                 if _beautifier:
-                    # XXX: broken
+                    # XXX: broken. some new class of options ?
                     pass
 
                     #  call the Beautifier if avaliable
@@ -715,16 +698,6 @@ class Beautifier:
                 if peek_token.type == TOKEN.EOF or peek_token.type == TOKEN.TAG_CLOSE:
                     break
 
-            while True:
-                peek_token = tokens.peek(peek_index)
-                assert peek_token
-                if peek_token.type == TOKEN.ATTRIBUTE:
-                    parser_token.attr_count += 1
-
-                peek_index += 1
-                if peek_token.type == TOKEN.EOF or peek_token.type == TOKEN.TAG_CLOSE:
-                    break
-
         # indent attributes an auto, forced, aligned or forced-align line-wrap
         if (
             self._is_wrap_attributes_force_aligned
@@ -738,28 +711,29 @@ class Beautifier:
 
         return parser_token
 
-    def _get_tag_open_token(self, raw_token: Token):  # function to get a full tag and parse its type
+    def _get_tag_open_token(self, raw_token: Token):
+        # function to get a full tag and parse its type
         parser_token = TagOpenParserToken(self._options, self._tag_stack.get_parser_token(), raw_token)
 
         parser_token.alignment_size = self._options.wrap_attributes_indent_size
 
-        parser_token.is_end_tag = parser_token.is_end_tag or parser_token.tag_check in self._options.void_elements
+        parser_token.is_end_tag = parser_token.is_end_tag or (parser_token.tag_check in self._options.void_elements)
 
         parser_token.is_empty_element = parser_token.tag_complete or (
             parser_token.is_start_tag and parser_token.is_end_tag
         )
 
-        parser_token.is_unformatted = (
-            not parser_token.tag_complete and parser_token.tag_check in self._options.unformatted
+        parser_token.is_unformatted = not parser_token.tag_complete and (
+            parser_token.tag_check in self._options.unformatted
         )
 
-        parser_token.is_content_unformatted = (
-            not parser_token.is_empty_element and parser_token.tag_check in self._options.content_unformatted
+        parser_token.is_content_unformatted = not parser_token.is_empty_element and (
+            parser_token.tag_check in self._options.content_unformatted
         )
 
         parser_token.is_inline_element = (
-            parser_token.tag_name in self._options.inline
-            or (self._options.inline_custom_elements and "-" in parser_token.tag_name)
+            (parser_token.tag_name in self._options.inline)
+            or (self._options.inline_custom_elements and ("-" in parser_token.tag_name))
             or parser_token.tag_start_char == "{"
         )
 
@@ -776,8 +750,9 @@ class Beautifier:
 
         if not parser_token.is_empty_element:
             if parser_token.is_end_tag:  # this tag is a double tag so check for tag-ending
-                parser_token.start_tag_token = self._tag_stack.try_pop(parser_token.tag_name)
-                # remove it and all ancestors
+                parser_token.start_tag_token = self._tag_stack.try_pop(
+                    parser_token.tag_name
+                )  # remove it and all ancestors
             else:  #  it's a start-tag
                 #  check if this tag is starting an element that has optional end element
                 #  and do an ending needed
@@ -798,10 +773,8 @@ class Beautifier:
             if not printer._output.just_added_blankline():
                 printer.print_newline(True)
 
-        if (
-            parser_token.is_empty_element
-        ):  # if this tag name is a single tag type (either in the list or has a closing /)
-
+        if parser_token.is_empty_element:
+            # if this tag name is a single tag type (either in the list or has a closing /)
             #  if you hit an else case, reset the indent level if you are inside an:
             #  'if', 'unless', or 'each' block.
             if parser_token.tag_start_char == "{" and parser_token.tag_check == "else":
@@ -824,9 +797,7 @@ class Beautifier:
             else:
                 if not (parser_token.is_inline_element or parser_token.is_unformatted):
                     printer.print_newline(False)
-
                 self._calcluate_parent_multiline(printer, parser_token)
-
         elif parser_token.is_end_tag:  # this tag is a double tag so check for tag-ending
             do_end_expand = False
 
@@ -845,8 +816,8 @@ class Beautifier:
             if do_end_expand:
                 printer.print_newline(False)
 
-        else:  #  it's a start-tag
-            # XXX: ?
+        else:
+            #  it's a start-tag
             parser_token.indent_content = not parser_token.custom_beautifier_name
 
             if parser_token.tag_start_char == "<":
@@ -890,17 +861,14 @@ class Beautifier:
 
             # elif (parser_token.tag_name == 'body'):
             #  DONE: A body element’s end tag may be omitted if the body element is not immediately followed by a comment.
-
         elif parser_token.tag_name == "li":
             #  An li element’s end tag may be omitted if the li element is immediately followed by another li element or if there is no more content in the parent element.
             result = result or self._tag_stack.try_pop("li", ["ol", "ul", "menu"])
-
         elif parser_token.tag_name == "dd" or parser_token.tag_name == "dt":
             #  A dd element’s end tag may be omitted if the dd element is immediately followed by another dd element or a dt element, or if there is no more content in the parent element.
             #  A dt element’s end tag may be omitted if the dt element is immediately followed by another dt element or a dd element.
             result = result or self._tag_stack.try_pop("dt", ["dl"])
             result = result or self._tag_stack.try_pop("dd", ["dl"])
-
         elif parser_token.parent.tag_name == "p" and parser_token.tag_name in p_closers:
             #  IMPORTANT: this else-if works because p_closers has no overlap with any other element we look for in this method
             #  check for the parent element is an HTML element that is not an <a>, <audio>, <del>, <ins>, <map>, <noscript>, or <video> element,  or an autonomous custom element.
@@ -909,28 +877,23 @@ class Beautifier:
             p_parent = parser_token.parent.parent
             if not p_parent or (p_parent.tag_name not in p_parent_excludes):
                 result = result or self._tag_stack.try_pop("p")
-
         elif parser_token.tag_name == "rp" or parser_token.tag_name == "rt":
             #  An rt element’s end tag may be omitted if the rt element is immediately followed by an rt or rp element, or if there is no more content in the parent element.
             #  An rp element’s end tag may be omitted if the rp element is immediately followed by an rt or rp element, or if there is no more content in the parent element.
             result = result or self._tag_stack.try_pop("rt", ["ruby", "rtc"])
             result = result or self._tag_stack.try_pop("rp", ["ruby", "rtc"])
-
         elif parser_token.tag_name == "optgroup":
             #  An optgroup element’s end tag may be omitted if the optgroup element is immediately followed by another optgroup element, or if there is no more content in the parent element.
             #  An option element’s end tag may be omitted if the option element is immediately followed by another option element, or if it is immediately followed by an optgroup element, or if there is no more content in the parent element.
             result = result or self._tag_stack.try_pop("optgroup", ["select"])
             # result = result or self._tag_stack.try_pop('option', ['select']);
-
         elif parser_token.tag_name == "option":
             #  An option element’s end tag may be omitted if the option element is immediately followed by another option element, or if it is immediately followed by an optgroup element, or if there is no more content in the parent element.
             result = result or self._tag_stack.try_pop("option", ["select", "datalist", "optgroup"])
-
         elif parser_token.tag_name == "colgroup":
             #  DONE: A colgroup element’s end tag may be omitted if the colgroup element is not immediately followed by a space character or a comment.
             #  A caption element's end tag may be ommitted if a colgroup, thead, tfoot, tbody, or tr element is started.
             result = result or self._tag_stack.try_pop("caption", ["table"])
-
         elif parser_token.tag_name == "thead":
             #  A colgroup element's end tag may be ommitted if a thead, tfoot, tbody, or tr element is started.
             #  A caption element's end tag may be ommitted if a colgroup, thead, tfoot, tbody, or tr element is started.
@@ -939,7 +902,6 @@ class Beautifier:
 
             # elif (parser_token.tag_name == 'caption'):
             #  DONE: A caption element’s end tag may be omitted if the caption element is not immediately followed by a space character or a comment.
-
         elif parser_token.tag_name == "tbody" or parser_token.tag_name == "tfoot":
             #  A thead element’s end tag may be omitted if the thead element is immediately followed by a tbody or tfoot element.
             #  A tbody element’s end tag may be omitted if the tbody element is immediately followed by a tbody or tfoot element, or if there is no more content in the parent element.
@@ -952,7 +914,6 @@ class Beautifier:
 
             # elif (parser_token.tag_name == 'tfoot'):
             #  DONE: A tfoot element’s end tag may be omitted if there is no more content in the parent element.
-
         elif parser_token.tag_name == "tr":
             #  A tr element’s end tag may be omitted if the tr element is immediately followed by another tr element, or if there is no more content in the parent element.
             #  A colgroup element's end tag may be ommitted if a thead, tfoot, tbody, or tr element is started.
@@ -960,7 +921,6 @@ class Beautifier:
             result = result or self._tag_stack.try_pop("caption", ["table"])
             result = result or self._tag_stack.try_pop("colgroup", ["table"])
             result = result or self._tag_stack.try_pop("tr", ["table", "thead", "tbody", "tfoot"])
-
         elif parser_token.tag_name == "th" or parser_token.tag_name == "td":
             #  A td element’s end tag may be omitted if the td element is immediately followed by a td or th element, or if there is no more content in the parent element.
             #  A th element’s end tag may be omitted if the th element is immediately followed by a td or th element, or if there is no more content in the parent element.
