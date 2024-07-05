@@ -49,6 +49,7 @@ class TemplateNames:
 class TemplatePatterns:
     def __init__(self, input_scanner: InputScanner):
         pattern = Pattern(input_scanner)
+
         self.handlebars_comment = pattern.starting_with(r"{{!--").until_after(r"--}}")
         self.handlebars_unescaped = pattern.starting_with(r"{{{").until_after(r"}}}")
         self.handlebars = pattern.starting_with(r"{{").until_after(r"}}")
@@ -59,8 +60,8 @@ class TemplatePatterns:
         self.django_value = pattern.starting_with(r"{{").until_after(r"}}")
         self.django_comment = pattern.starting_with(r"{#").until_after(r"#}")
         # WTF ? the smarty patterns are different in py and js
-        self.smarty = pattern.starting_with(r'{(?=[^}{\s\n])').until_after(r'[^\s\n]}')
-        self.smarty_value = pattern.starting_with(r"{(?=[^}{\s\n])").until_after(r"}")
+        self.smarty = pattern.starting_with(r"{(?=[^}{\s\n])").until_after(r"[^\s\n]}")
+        # self.smarty_value = pattern.starting_with(r"{(?=[^}{\s\n])").until_after(r"}")
         self.smarty_comment = pattern.starting_with(r"{\*").until_after(r"\*}")
         self.smarty_literal = pattern.starting_with(r"{literal}").until_after(r"{/literal}")
 
@@ -136,6 +137,10 @@ class TemplatablePattern(Pattern):
             items.append(self.__patterns.php._starting_pattern.pattern)
 
         if not self._disabled.handlebars:
+            items.append(self.__patterns.handlebars._starting_pattern.pattern)
+
+        if not self._disabled.angular:
+            # Handlebars ('{{' and '}}') are also special tokens in Angular
             items.append(self.__patterns.handlebars._starting_pattern.pattern)
 
         if not self._disabled.erb:
