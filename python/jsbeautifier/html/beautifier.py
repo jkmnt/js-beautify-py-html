@@ -646,7 +646,7 @@ class Beautifier:
                         text = re.sub(rf"\n({ white })?", "\n", text)
 
                     # XXX: # text = indentation + text.replace(r"\n"g, '\n' + indentation);
-                    text = indentation + text.replace(r"\n", "\n" + indentation)
+                    text = indentation + text.replace("\n", "\n" + indentation)
 
             if pre:
                 if not text:
