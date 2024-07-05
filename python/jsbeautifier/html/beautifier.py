@@ -576,7 +576,7 @@ class Beautifier:
                     html_source, options, self._js_beautify, self._css_beautify
                 ).beautify()
             else:
-                assert False
+                _beautifier = None
 
             if self._options.indent_scripts == "keep":
                 script_indent_level = 0
@@ -936,3 +936,8 @@ class Beautifier:
         parser_token.parent = self._tag_stack.get_parser_token()
 
         return result
+
+
+# XXX: JSUT
+def beautify(input: str, options: t.Mapping[str, t.Any] | None = None):
+    return Beautifier(input, options).beautify()
