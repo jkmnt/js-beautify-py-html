@@ -99,8 +99,8 @@ class Tokenizer(BaseTokenizer):
             word_control_flow_close_excluded=templatable_reader.until(r"[\n\r\t <}]"),
             single_quote=templatable_reader.until_after(r"'"),
             double_quote=templatable_reader.until_after(r'"'),
-            attribute=templatable_reader.until(r"[\n\r\t =>]|\/>"),
-            element_name=templatable_reader.until(r"[\n\r\t >\/]"),
+            attribute=templatable_reader.until(r"[\n\r\t =>]|/>"),
+            element_name=templatable_reader.until(r"[\n\r\t >/]"),
             angular_control_flow_start=pattern_reader.matching(r"\@[a-zA-Z]+[^({]*[({]"),
             handlebars_comment=pattern_reader.starting_with(r"{{!--").until_after(r"--}}"),
             handlebars=pattern_reader.starting_with(r"{{").until_after(r"}}"),
@@ -126,7 +126,7 @@ class Tokenizer(BaseTokenizer):
         self._unformatted_content_delimiter = None
 
         if self._options.unformatted_content_delimiter:
-            regexp = self._input.get_regexp(self._options.unformatted_content_delimiter)
+            regexp = self._input.get_literal_regexp(self._options.unformatted_content_delimiter)
             if regexp:
                 self.__patterns.unformatted_content_delimiter = pattern_reader.matching(regexp).until_after(regexp)
 

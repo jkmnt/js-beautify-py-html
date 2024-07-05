@@ -27,6 +27,7 @@
 # */
 
 from __future__ import annotations
+import copy
 
 import typing as t
 
@@ -38,6 +39,9 @@ from ..core.token import Token
 
 from .options import Options, BaseOptions
 from .tokenizer import Tokenizer, TOKEN
+
+import cssbeautifier
+import jsbeautifier
 
 # NOTE: moved here. in js they was near the middle of the file
 # To be used for <p> tag special case:
@@ -196,13 +200,13 @@ def get_custom_beautifier_name(tag_check: str, raw_token: Token):
     if re.search(r"text/css", typeAttribute):
         result = "css"
     elif re.search(
-        r"module|((text|application|dojo)\/(x-)?(javascript|ecmascript|jscript|livescript|(ld\+)?json|method|aspect))",
+        r"module|((text|application|dojo)/(x-)?(javascript|ecmascript|jscript|livescript|(ld\+)?json|method|aspect))",
         typeAttribute,
     ):
         result = "javascript"
-    elif re.search(r"(text|application|dojo)\/(x-)?(html)", typeAttribute):
+    elif re.search(r"(text|application|dojo)/(x-)?(html)", typeAttribute):
         result = "html"
-    elif re.search(r"test\/null", typeAttribute):
+    elif re.search(r"test/null", typeAttribute):
         #  Test only mime-type for testing the beautifier when null is passed as beautifing function
         result = "null"
 
@@ -565,12 +569,12 @@ class Beautifier:
             post = ""
             # XXX: broken
             # if (last_tag_token.custom_beautifier_name == 'javascript' and typeof self._js_beautify == 'function'):
-            if last_tag_token.custom_beautifier_name == "javascript" and self._js_beautify == "function":
-                _beautifier = self._js_beautify
+            if last_tag_token.custom_beautifier_name == "javascript":
+                _beautifier = jsbeautifier.beautify
             # XXX: broken too
             # elif (last_tag_token.custom_beautifier_name == 'css' and typeof self._css_beautify == 'function'):
-            elif last_tag_token.custom_beautifier_name == "css" and self._css_beautify == "function":
-                _beautifier = self._css_beautify
+            elif last_tag_token.custom_beautifier_name == "css":
+                _beautifier = cssbeautifier.beautify
             elif last_tag_token.custom_beautifier_name == "html":
                 _beautifier = lambda html_source, options: Beautifier(
                     html_source, options, self._js_beautify, self._css_beautify
@@ -623,8 +627,9 @@ class Beautifier:
 
             if text:
                 if _beautifier:
-                    # XXX: broken. some new class of options ?
-                    pass
+                    opts = copy.deepcopy(self._options.raw_options)
+                    opts.eol = "\n"
+                    text = _beautifier(indentation + text, opts)
 
                     #  call the Beautifier if avaliable
                     # Child_options = function() {

@@ -31,6 +31,7 @@ import typing as t
 if t.TYPE_CHECKING:
     from .pattern import Re
 
+
 class InputScanner:
     def __init__(self, input_string: str | None):
         self.__six = __import__("six")
@@ -131,6 +132,10 @@ class InputScanner:
         elif isinstance(pattern, re.Pattern):
             result = re.compile(pattern.pattern)
         return result
+
+    def get_literal_regexp(self, literal_string: str):
+        escaped = re.sub(r"[-/\\^$*+?.()|[\]{}]", r"\\\g<0>", literal_string)
+        return re.compile(escaped)
 
     # css beautifier legacy helpers
     def peekUntilAfter(self, pattern: re.Pattern):
