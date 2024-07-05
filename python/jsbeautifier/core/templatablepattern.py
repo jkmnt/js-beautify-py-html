@@ -22,8 +22,14 @@
 # CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
+import typing as t
+
 import copy
 from ..core.pattern import Pattern
+
+
+if t.TYPE_CHECKING:
+    from .inputscanner import InputScanner
 
 __all__ = ["TemplatablePattern"]
 
@@ -39,7 +45,7 @@ class TemplateNames:
 
 
 class TemplatePatterns:
-    def __init__(self, input_scanner):
+    def __init__(self, input_scanner: InputScanner):
         pattern = Pattern(input_scanner)
         self.handlebars_comment = pattern.starting_with(r"{{!--").until_after(r"--}}")
         self.handlebars_unescaped = pattern.starting_with(r"{{{").until_after(r"}}}")
@@ -52,13 +58,11 @@ class TemplatePatterns:
         self.django_comment = pattern.starting_with(r"{#").until_after(r"#}")
         self.smarty_value = pattern.starting_with(r"{(?=[^}{\s\n])").until_after(r"}")
         self.smarty_comment = pattern.starting_with(r"{\*").until_after(r"\*}")
-        self.smarty_literal = pattern.starting_with(r"{literal}").until_after(
-            r"{/literal}"
-        )
+        self.smarty_literal = pattern.starting_with(r"{literal}").until_after(r"{/literal}")
 
 
 class TemplatablePattern(Pattern):
-    def __init__(self, input_scanner, parent=None):
+    def __init__(self, input_scanner, parent: "TemplatablePattern" | None = None):
         Pattern.__init__(self, input_scanner, parent)
         self.__template_pattern = None
         self._disabled = TemplateNames()
@@ -84,13 +88,13 @@ class TemplatablePattern(Pattern):
         result._update()
         return result
 
-    def disable(self, language):
+    def disable(self, language: str):
         result = self._create()
         setattr(result._disabled, language, True)
         result._update()
         return result
 
-    def exclude(self, language):
+    def exclude(self, language: str):
         result = self._create()
         setattr(result._excluded, language, True)
         result._update()
@@ -109,19 +113,20 @@ class TemplatablePattern(Pattern):
             if self._match_pattern is not None:
                 next += self._input.read(self._match_pattern)
             else:
+                assert self.__template_pattern
                 next += self._input.readUntil(self.__template_pattern)
 
             result += next
             next = self._read_template()
 
         if self._until_after:
-            # result += self._input.readUntilAfter(self._until_after)
+            assert self._until_pattern
             result += self._input.readUntilAfter(self._until_pattern)
 
         return result
 
     def __set_templated_pattern(self):
-        items = list()
+        items = []
 
         if not self._disabled.php:
             items.append(self.__patterns.php._starting_pattern.pattern)
@@ -159,34 +164,22 @@ class TemplatablePattern(Pattern):
                 resulting_string = resulting_string or self.__patterns.erb.read()
         elif c == "{":
             if not self._disabled.handlebars and not self._excluded.handlebars:
-                resulting_string = (
-                    resulting_string or self.__patterns.handlebars_comment.read()
-                )
-                resulting_string = (
-                    resulting_string or self.__patterns.handlebars_unescaped.read()
-                )
+                resulting_string = resulting_string or self.__patterns.handlebars_comment.read()
+                resulting_string = resulting_string or self.__patterns.handlebars_unescaped.read()
                 resulting_string = resulting_string or self.__patterns.handlebars.read()
             if not self._disabled.django:
                 # django coflicts with handlebars a bit.
                 if not self._excluded.django and not self._excluded.handlebars:
-                    resulting_string = (
-                        resulting_string or self.__patterns.django_value.read()
-                    )
+                    resulting_string = resulting_string or self.__patterns.django_value.read()
                 if not self._excluded.django:
-                    resulting_string = (
-                        resulting_string or self.__patterns.django_comment.read()
-                    )
+                    resulting_string = resulting_string or self.__patterns.django_comment.read()
                     resulting_string = resulting_string or self.__patterns.django.read()
             if not self._disabled.smarty:
                 # smarty cannot be enabled with django or handlebars enabled
 
                 if self._disabled.django and self._disabled.handlebars:
-                    resulting_string = (
-                        resulting_string or self.__patterns.smarty_comment.read()
-                    )
-                    resulting_string = (
-                        resulting_string or self.__patterns.smarty_literal.read()
-                    )
+                    resulting_string = resulting_string or self.__patterns.smarty_comment.read()
+                    resulting_string = resulting_string or self.__patterns.smarty_literal.read()
 
                     resulting_string = resulting_string or self.__patterns.smarty.read()
 

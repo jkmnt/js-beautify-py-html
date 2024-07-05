@@ -125,7 +125,7 @@ class Tokenizer:
     def _is_closing(self, current_token, open_token):
         return False
 
-    def _create_token(self, token_type: str, text: str | None):
+    def _create_token(self, token_type: str, text: str):
         token = Token(
             token_type,
             text,

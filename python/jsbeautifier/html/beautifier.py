@@ -352,7 +352,9 @@ class TagOpenParserToken:
 
 
 class Beautifier:
-    def __init__(self, source_text: str, options: t.Mapping[str, t.Any] | None = None, js_beautify = None, css_beautify = None):
+    def __init__(
+        self, source_text: str, options: t.Mapping[str, t.Any] | None = None, js_beautify=None, css_beautify=None
+    ):
         # Wrapper function to invoke all the necessary constructors and deal with the output.
         self._source_text = source_text
         options = options or {}
@@ -390,13 +392,13 @@ class Beautifier:
             eol = "\n"
             m = re.search(r"\r\n|[\r\n]", source_text)
             if m:
-                eol = m[0]
+                eol = m.group(0)
 
         #  HACK: newline parsing inconsistent. This brute force normalizes the input.
         source_text = re.sub(r"\r\n|[\r\n]", "\n", source_text)
 
         m = re.search(r"^[\t ]*", source_text)
-        baseIndentString = m[0] if m else ""
+        baseIndentString = m.group(0) if m else ""
 
         last_token = Token(text="", type="")
 
@@ -974,5 +976,3 @@ class Beautifier:
 
         return result
 
-
-# module.exports.Beautifier = Beautifier;

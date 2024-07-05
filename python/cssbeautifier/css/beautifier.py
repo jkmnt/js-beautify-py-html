@@ -100,12 +100,12 @@ class Beautifier:
         self.__source_text = source_text
 
         self._options = BeautifierOptions(opts)
-        self._input = None
+        self._input: InputScanner
         self._ch = None
 
         self._indentLevel = 0
         self._nestedLevel = 0
-        self._output = None
+        self._output: Output
 
         # https://developer.mozilla.org/en-US/docs/Web/CSS/At-rule
         # also in CONDITIONAL_GROUP_RULE below
@@ -143,10 +143,7 @@ class Beautifier:
         while whitespaceChar.search(self._input.peek() or "") is not None:
             self._ch = self._input.next()
             if allowAtLeastOneNewLine and self._ch == "\n":
-                if (
-                    newline_count == 0
-                    or newline_count < self._options.max_preserve_newlines
-                ):
+                if newline_count == 0 or newline_count < self._options.max_preserve_newlines:
                     newline_count += 1
                     self._output.add_new_line(True)
         return result
@@ -200,12 +197,15 @@ class Beautifier:
         if self._options.eol == "auto":
             self._options.eol = "\n"
             if self.lineBreak.search(source_text or ""):
-                self._options.eol = self.lineBreak.search(source_text).group()
+                m = self.lineBreak.search(source_text)
+                if m:
+                    self._options.eol = m.group(0)
 
         # HACK: newline parsing inconsistent. This brute force normalizes the
         # input newlines.
         source_text = re.sub(self.allLineBreaks, "\n", source_text)
-        baseIndentString = re.search("^[\t ]*", source_text).group(0)
+        m = re.search("^[\t ]*", source_text)
+        baseIndentString = m.group(0) if m else ""
 
         self._output = Output(self._options, baseIndentString)
 
@@ -275,9 +275,7 @@ class Beautifier:
                 self.print_string(self._ch)
 
                 # strip trailing space, for hash property check
-                variable = self._input.peekUntilAfter(
-                    re.compile(r"[: ,;{}()[\]\/='\"]")
-                )
+                variable = self._input.peekUntilAfter(re.compile(r"[: ,;{}()[\]\/='\"]"))
 
                 if variable[-1] in ": ":
                     # we have a variable or pseudo-class, add it and
@@ -300,9 +298,7 @@ class Beautifier:
                 else:
                     self.print_string(self._ch)
                     # strip trailing space, for hash property check
-                    variableOrRule = self._input.peekUntilAfter(
-                        re.compile(r"[: ,;{}()[\]\/='\"]")
-                    )
+                    variableOrRule = self._input.peekUntilAfter(re.compile(r"[: ,;{}()[\]\/='\"]"))
 
                     if variableOrRule[-1] in ": ":
                         # we have a variable or pseudo-class, add it and
@@ -388,10 +384,7 @@ class Beautifier:
                 self.eatWhitespace(True)
                 self._output.add_new_line()
 
-                if (
-                    self._options.newline_between_rules
-                    and not self._output.just_added_blankline()
-                ):
+                if self._options.newline_between_rules and not self._output.just_added_blankline():
                     if self._input.peek() != "}":
                         self._output.add_new_line(True)
                 if self._input.peek() == ")":
@@ -484,11 +477,7 @@ class Beautifier:
                     self.print_string(self._ch)
 
                     # handle scss/sass map
-                    if (
-                        insidePropertyValue
-                        and previous_ch == "$"
-                        and self._options.selector_separator_newline
-                    ):
+                    if insidePropertyValue and previous_ch == "$" and self._options.selector_separator_newline:
                         self._output.add_new_line()
                         insideScssMap = True
                     else:
@@ -500,11 +489,7 @@ class Beautifier:
                     parenLevel -= 1
                     self.outdent()
 
-                if (
-                    insideScssMap
-                    and self._input.peek() == ";"
-                    and self._options.selector_separator_newline
-                ):
+                if insideScssMap and self._input.peek() == ";" and self._options.selector_separator_newline:
                     insideScssMap = False
                     self.outdent()
                     self._output.add_new_line()
@@ -522,9 +507,7 @@ class Beautifier:
                 else:
                     self._output.space_before_token = True
             elif (
-                (self._ch == ">" or self._ch == "+" or self._ch == "~")
-                and not insidePropertyValue
-                and parenLevel == 0
+                (self._ch == ">" or self._ch == "+" or self._ch == "~") and not insidePropertyValue and parenLevel == 0
             ):
                 # handle combinator spacing
                 if self._options.space_around_combinator:
@@ -557,11 +540,7 @@ class Beautifier:
                 self.preserveSingleSpace(preserveAfterSpace or isAfterSpace)
                 self.print_string(self._ch)
 
-                if (
-                    not self._output.just_added_newline()
-                    and self._input.peek() == "\n"
-                    and insideNonSemiColonValues
-                ):
+                if not self._output.just_added_newline() and self._input.peek() == "\n" and insideNonSemiColonValues:
                     self._output.add_new_line()
 
         sweet_code = self._output.get_code(self._options.eol)
