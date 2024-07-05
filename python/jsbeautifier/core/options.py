@@ -50,9 +50,7 @@ class Options:
         if not self.preserve_newlines:
             self.max_preserve_newlines = 0
 
-        self.indent_with_tabs = self._get_boolean(
-            "indent_with_tabs", self.indent_char == "\t"
-        )
+        self.indent_with_tabs = self._get_boolean("indent_with_tabs", self.indent_char == "\t")
         if self.indent_with_tabs:
             self.indent_char = "\t"
 
@@ -67,9 +65,7 @@ class Options:
                 self.indent_size = 4
 
         # Backwards compat with 1.3.x
-        self.wrap_line_length = self._get_number(
-            "wrap_line_length", self._get_number("max_char")
-        )
+        self.wrap_line_length = self._get_number("wrap_line_length", self._get_number("max_char"))
 
         # Support editor config setting
         self.editorconfig = False
@@ -88,6 +84,8 @@ class Options:
     def _get_array(self, name, default_value=[]):
         option_value = getattr(self.raw_options, name, default_value)
         result = []
+        if option_value is None:  # default
+            result = default_value
         if isinstance(option_value, list):
             result = copy.copy(option_value)
         elif isinstance(option_value, str):
@@ -109,20 +107,18 @@ class Options:
         option_value = getattr(self.raw_options, name, default_value)
         result = ""
         if isinstance(option_value, str):
-            result = (
-                option_value.replace("\\r", "\r")
-                .replace("\\n", "\n")
-                .replace("\\t", "\t")
-            )
+            result = option_value.replace("\\r", "\r").replace("\\n", "\n").replace("\\t", "\t")
 
         return result
 
     def _get_number(self, name, default_value=0):
         option_value = getattr(self.raw_options, name, default_value)
+        if option_value is None:
+            return default_value
         result = 0
         try:
             result = int(option_value)
-        except ValueError:
+        except (ValueError, TypeError):
             pass
 
         return result
@@ -223,8 +219,6 @@ def _normalizeOpts(options):
         for key in option_keys:
             if "-" in key:
                 delattr(convertedOpts, key)
-                setattr(
-                    convertedOpts, key.replace("-", "_"), getattr(options, key, None)
-                )
+                setattr(convertedOpts, key.replace("-", "_"), getattr(options, key, None))
 
     return convertedOpts

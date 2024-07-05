@@ -58,6 +58,8 @@ class TemplatePatterns:
         self.django = pattern.starting_with(r"{%").until_after(r"%}")
         self.django_value = pattern.starting_with(r"{{").until_after(r"}}")
         self.django_comment = pattern.starting_with(r"{#").until_after(r"#}")
+        # WTF ? the smarty patterns are different in py and js
+        self.smarty = pattern.starting_with(r'{(?=[^}{\s\n])').until_after(r'[^\s\n]}')
         self.smarty_value = pattern.starting_with(r"{(?=[^}{\s\n])").until_after(r"}")
         self.smarty_comment = pattern.starting_with(r"{\*").until_after(r"\*}")
         self.smarty_literal = pattern.starting_with(r"{literal}").until_after(r"{/literal}")
