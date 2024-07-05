@@ -1,0 +1,402 @@
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
+
+'''
+{{&header_text}}
+
+  The MIT License (MIT)
+
+  Copyright (c) 2007-2018 Einar Lielmanis, Liam Newman, and contributors.
+
+  Permission is hereby granted, free of charge, to any person
+  obtaining a copy of this software and associated documentation files
+  (the "Software"), to deal in the Software without restriction,
+  including without limitation the rights to use, copy, modify, merge,
+  publish, distribute, sublicense, and/or sell copies of the Software,
+  and to permit persons to whom the Software is furnished to do so,
+  subject to the following conditions:
+
+  The above copyright notice and this permission notice shall be
+  included in all copies or substantial portions of the Software.
+
+  THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+  EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+  MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
+  NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS
+  BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN
+  ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
+  CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+  SOFTWARE.
+'''
+
+import re
+import unittest
+import jsbeautifier
+import copy
+
+from jsbeautifier.html.beautifier import beautify
+
+class TestHtmlBeautifier(unittest.TestCase):
+    options = None
+
+    @classmethod
+    def setUpClass(cls):
+        pass
+        cls.wrapregex = re.compile('^(.+)$', re.MULTILINE)
+
+    def reset_options(self):
+        true = True
+        false = False
+
+
+        default_options = jsbeautifier.default_options()
+        default_options.indent_size = 4
+        default_options.indent_char = ' '
+        default_options.preserve_newlines = true
+        default_options.jslint_happy = false
+        default_options.keep_array_indentation = false
+        default_options.brace_style = 'collapse'
+        default_options.space_before_conditional = true
+        default_options.break_chained_methods = false
+        default_options.selector_separator = '\n'
+        default_options.end_with_newline = false
+
+{{#default_options}}        default_options.{{name}} = {{&value}}
+{{/default_options}}
+
+        self.options = copy.copy(default_options)
+
+    def test_unconverted(self):
+        test_fragment = self.decodesto
+        bth = self.bth
+
+        true = True
+        false = False
+        null = None
+
+        self.reset_options();
+        #============================================================
+        test_fragment(null, '');
+
+        self.reset_options();
+        #============================================================
+        # Test user pebkac protection, converts dash names to underscored names
+        self.options.end_with_newline = true;
+        test_fragment(null, '\n');
+
+        self.reset_options();
+        #============================================================
+        # set_name('end_with_newline = true');
+        self.options.end_with_newline = true;
+
+        test_fragment('', '\n');
+        test_fragment('<div></div>\n');
+        test_fragment('<div></div>\n\n\n', '<div></div>\n');
+        test_fragment('<head>\n' +
+            '    <script>\n' +
+            '        mocha.setup("bdd");\n' +
+            '\n' +
+            '    </script>\n' +
+            '</head>\n');
+
+
+        self.reset_options();
+        #============================================================
+        # set_name('Error cases');
+        # error cases need love too
+        bth('<img title="Bad food!" src="foo.jpg" alt="Evil" ">');
+        bth("<!-- don't blow up if a comment is not complete"); # -->
+
+        self.reset_options();
+        #============================================================
+        # set_name('Basic beautify');
+
+        test_fragment(
+            '<head>\n' +
+            '    <script>\n' +
+            '        mocha.setup("bdd");\n' +
+            '    </script>\n' +
+            '</head>');
+
+        test_fragment('<div></div>\n', '<div></div>');
+        bth('<div></div>');
+        bth('<div>content</div>');
+        bth('<div><div></div></div>',
+            '<div>\n' +
+            '    <div></div>\n' +
+            '</div>');
+        bth('<div><div>content</div></div>',
+            '<div>\n' +
+            '    <div>content</div>\n' +
+            '</div>');
+        bth('<div>\n' +
+            '    <span>content</span>\n' +
+            '</div>');
+        bth('<div>\n' +
+            '</div>');
+        bth('<div>\n' +
+            '    content\n' +
+            '</div>');
+        bth('<div>\n' +
+            '    </div>',
+            '<div>\n' +
+            '</div>');
+        test_fragment('   <div>\n' +
+            '    </div>',
+            '   <div>\n' +
+            '   </div>');
+        bth('<div>\n' +
+            '</div>\n' +
+            '    <div>\n' +
+            '    </div>',
+            '<div>\n' +
+            '</div>\n' +
+            '<div>\n' +
+            '</div>');
+        test_fragment('   <div>\n' +
+            '</div>',
+            '   <div>\n' +
+            '   </div>');
+        bth('<div        >content</div>',
+            '<div>content</div>');
+        bth('<div     thinger="preserve  space  here"   ></div  >',
+            '<div thinger="preserve  space  here"></div>');
+        bth('content\n' +
+            '    <div>\n' +
+            '    </div>\n' +
+            'content',
+            'content\n' +
+            '<div>\n' +
+            '</div>\n' +
+            'content');
+        bth('<li>\n' +
+            '    <div>\n' +
+            '    </div>\n' +
+            '</li>');
+        bth('<li>\n' +
+            '<div>\n' +
+            '</div>\n' +
+            '</li>',
+            '<li>\n' +
+            '    <div>\n' +
+            '    </div>\n' +
+            '</li>');
+        bth('<li>\n' +
+            '    content\n' +
+            '</li>\n' +
+            '<li>\n' +
+            '    content\n' +
+            '</li>');
+
+        bth('<img>content');
+        bth('<img> content');
+        bth('<img>   content', '<img> content');
+
+        bth('<img><img>content');
+        bth('<img> <img>content');
+        bth('<img>   <img>content', '<img> <img>content');
+
+        bth('<img><b>content</b>');
+        bth('<img> <b>content</b>');
+        bth('<img>   <b>content</b>', '<img> <b>content</b>');
+
+        bth('<div>content<img>content</div>');
+        bth('<div> content <img> content</div>');
+        bth('<div>    content <img>    content </div>',
+            '<div> content <img> content </div>');
+        bth('Text <a href="#">Link</a> Text');
+
+        self.reset_options();
+        #============================================================
+        self.options.content_unformatted = ['script', 'style'];
+        bth('<script id="javascriptTemplate" type="text/x-kendo-template">\n' +
+            '  <ul>\n' +
+            '  # for (var i = 0; i < data.length; i++) { #\n' +
+            '    <li>#= data[i] #</li>\n' +
+            '  # } #\n' +
+            '  </ul>\n' +
+            '</script>');
+        bth('<style>\n' +
+            '  body {background-color:lightgrey}\n' +
+            '  h1   {color:blue}\n' +
+            '</style>');
+
+        self.reset_options();
+        #============================================================
+        # set_name('inline = ["custom-element"]');
+
+        self.options.inline = ['custom-element'];
+        test_fragment('<div>should <custom-element>not</custom-element>' +
+                      ' insert newlines</div>',
+                      '<div>should <custom-element>not</custom-element>' +
+                      ' insert newlines</div>');
+
+
+        self.reset_options();
+        #============================================================
+        # set_name('line wrap tests');
+
+        bth('<div><span>content</span></div>');
+
+        self.options.wrap_line_length = 0;
+        #...---------1---------2---------3---------4---------5---------6---------7
+        #...1234567890123456789012345678901234567890123456789012345678901234567890
+        bth('<div>Some text that should not wrap at all.</div>',
+            # expected
+            '<div>Some text that should not wrap at all.</div>');
+
+        # A value of 0 means no max line length, and should not wrap.
+        #...---------1---------2---------3---------4---------5---------6---------7---------8---------9--------10--------11--------12--------13--------14--------15--------16--------17--------18--------19--------20--------21--------22--------23--------24--------25--------26--------27--------28--------29
+        #...12345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890
+        bth('<div>Some text that should not wrap at all. Some text that should not wrap at all. Some text that should not wrap at all. Some text that should not wrap at all. Some text that should not wrap at all. Some text that should not wrap at all. Some text that should not wrap at all.</div>',
+            # expected
+            '<div>Some text that should not wrap at all. Some text that should not wrap at all. Some text that should not wrap at all. Some text that should not wrap at all. Some text that should not wrap at all. Some text that should not wrap at all. Some text that should not wrap at all.</div>');
+
+        self.options.wrap_line_length = "0";
+        #...---------1---------2---------3---------4---------5---------6---------7
+        #...1234567890123456789012345678901234567890123456789012345678901234567890
+        bth('<div>Some text that should not wrap at all.</div>',
+            #  expected
+            '<div>Some text that should not wrap at all.</div>');
+
+        # A value of "0" means no max line length, and should not wrap
+        #...---------1---------2---------3---------4---------5---------6---------7---------8---------9--------10--------11--------12--------13--------14--------15--------16--------17--------18--------19--------20--------21--------22--------23--------24--------25--------26--------27--------28--------29
+        #...12345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890
+        bth('<div>Some text that should not wrap at all. Some text that should not wrap at all. Some text that should not wrap at all. Some text that should not wrap at all. Some text that should not wrap at all. Some text that should not wrap at all. Some text that should not wrap at all.</div>',
+            # expected
+            '<div>Some text that should not wrap at all. Some text that should not wrap at all. Some text that should not wrap at all. Some text that should not wrap at all. Some text that should not wrap at all. Some text that should not wrap at all. Some text that should not wrap at all.</div>');
+
+        self.options.wrap_line_length = 40;
+        #...---------1---------2---------3---------4---------5---------6---------7
+        #...1234567890123456789012345678901234567890123456789012345678901234567890
+        bth('<div>Some test text that should wrap_inside_this section here__.</div>',
+            # expected
+            '<div>Some test text that should\n' +
+            '    wrap_inside_this section here__.\n' +
+            '</div>');
+
+        # Support passing string of number
+        self.options.wrap_line_length = "40";
+        #...---------1---------2---------3---------4---------5---------6---------7
+        #...1234567890123456789012345678901234567890123456789012345678901234567890
+        bth('<div>Some test text that should wrap_inside_this section here__.</div>',
+            # expected
+            '<div>Some test text that should\n' +
+            '    wrap_inside_this section here__.\n' +
+            '</div>');
+
+        self.reset_options();
+        #============================================================
+
+    def test_beautifier(self):
+        test_fragment = self.decodesto
+        bth = self.bth
+
+        true = True
+        false = False
+        null = None
+
+        def unicode_char(value):
+            return chr(value)
+
+{{#groups}}{{#set_mustache_tags}}.{{/set_mustache_tags}}
+        #============================================================
+    {{^matrix}}
+        # {{&name}}
+        self.reset_options()
+        {{#options}}
+        self.options.{{name}} = {{&value}}
+        {{/options}}
+        {{#tests}}
+        {{#test_line}}.{{/test_line}}
+        {{/tests}}
+
+    {{/matrix}}
+    {{#matrix}}
+        # {{&name}} - ({{#matrix_context_string}}.{{/matrix_context_string}})
+        self.reset_options()
+        {{#options}}
+        self.options.{{name}} = {{&value}}
+        {{/options}}
+        {{#tests}}
+        {{#test_line}}.{{/test_line}}
+        {{/tests}}
+
+    {{/matrix}}
+{{#unset_mustache_tags}}.{{/unset_mustache_tags}}{{/groups}}
+
+        self.reset_options()
+        #============================================================
+
+
+    def decodesto(self, input, expectation=None):
+        if expectation is None:
+            expectation = input
+
+        self.assertMultiLineEqual(
+            beautify(input, self.options), expectation)
+
+        # if the expected is different from input, run it again
+        # expected output should be unchanged when run twice.
+        if not expectation is None:
+            self.assertMultiLineEqual(
+                beautify(expectation, self.options), expectation)
+
+        if self.options is None or not isinstance(self.options, (dict, tuple)):
+            # Everywhere we do newlines, they should be replaced with opts.eol
+            self.options.eol = '\r\\n'
+            expectation = expectation.replace('\n', '\r\n')
+            self.options.disabled = True
+            self.assertMultiLineEqual(
+                beautify(input, self.options), input or '')
+            self.assertMultiLineEqual(
+                beautify('\n\n' + expectation, self.options), '\n\n' + expectation)
+            self.options.disabled = False;
+            self.assertMultiLineEqual(
+                beautify(input, self.options), expectation)
+            if input and input.find('\n') != -1:
+                input = input.replace('\n', '\r\n')
+                self.assertMultiLineEqual(
+                    beautify(input, self.options), expectation)
+                # Ensure support for auto eol detection
+                self.options.eol = 'auto'
+                self.assertMultiLineEqual(
+                    beautify(input, self.options), expectation)
+            self.options.eol = '\n'
+
+    def wrap(self, text, char):
+        return self.wrapregex.sub(f'{ char }\\1', text)
+
+    def bth(self, input, expectation=None):
+        if expectation is None:
+            expectation = input
+
+        self.decodesto(input, expectation)
+        # If we set raw, input should be unchanged
+        self.options.test_output_raw = True
+        if self.options.end_with_newline:
+            self.decodesto(input, input)
+        self.options.test_output_raw = False
+
+        current_indent_size = None
+        if self.options.html and self.options.html['indent_size']:
+            current_indent_size = self.options.html['indent_size']
+
+        if not current_indent_size:
+            current_indent_size = self.options.indent_size
+
+        if current_indent_size == 4 and input:
+            char = '\t' if self.options.indent_with_tabs else '    '
+            wrapped_input = '<div>\n%s\n%s<span>inline</span>\n</div>' % (self.wrap(input, char), char)
+            wrapped_expect = '<div>\n%s\n%s<span>inline</span>\n</div>' % (self.wrap(expectation, char), char)
+            self.decodesto(wrapped_input, wrapped_expect)
+
+            # If we set raw, input should be unchanged
+            self.options.test_output_raw = True
+            if self.options.end_with_newline:
+                self.decodesto(wrapped_input, wrapped_input)
+            self.options.test_output_raw = False
+
+
+if __name__ == '__main__':
+    unittest.main()

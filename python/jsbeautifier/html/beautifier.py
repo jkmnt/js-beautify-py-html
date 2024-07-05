@@ -944,5 +944,5 @@ class Beautifier:
 
 
 # XXX: JSUT
-def beautify(input: str, options: t.Mapping[str, t.Any] | None = None):
-    return Beautifier(input, options).beautify()
+def beautify(input: str | None, options: t.Mapping[str, t.Any] | None = None):
+    return Beautifier(input or "", options).beautify()
