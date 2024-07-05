@@ -526,11 +526,11 @@ class Beautifier:
         else:
             if raw_token.type == TOKEN.ATTRIBUTE:
                 printer.set_space_before_token(True)
-            elif raw_token.type == TOKEN.EQUALS:  # { # no space before =
+            elif raw_token.type == TOKEN.EQUALS:  # no space before =
                 printer.set_space_before_token(False)
             elif (
                 raw_token.type == TOKEN.VALUE and raw_token.previous and raw_token.previous.type == TOKEN.EQUALS
-            ):  # { # no space before value
+            ):  # no space before value
                 printer.set_space_before_token(False)
 
             if raw_token.type == TOKEN.ATTRIBUTE and last_tag_token.tag_start_char == "<":
@@ -561,7 +561,7 @@ class Beautifier:
     def _handle_text(self, printer: Printer, raw_token: Token, last_tag_token: TagOpenParserToken):
         parser_token = Token(text=raw_token.text, type="TK_CONTENT")
 
-        if last_tag_token.custom_beautifier_name:  # { # check if we need to format javascript
+        if last_tag_token.custom_beautifier_name:  # check if we need to format javascript
             self._print_custom_beatifier_text(printer, raw_token, last_tag_token)
         elif last_tag_token.is_unformatted or last_tag_token.is_content_unformatted:
             printer.add_raw_token(raw_token)
@@ -774,7 +774,7 @@ class Beautifier:
     ):
 
         if not parser_token.is_empty_element:
-            if parser_token.is_end_tag:  # { # this tag is a double tag so check for tag-ending
+            if parser_token.is_end_tag:  # this tag is a double tag so check for tag-ending
                 parser_token.start_tag_token = self._tag_stack.try_pop(parser_token.tag_name)
                 # remove it and all ancestors
             else:  #  it's a start-tag
@@ -799,7 +799,7 @@ class Beautifier:
 
         if (
             parser_token.is_empty_element
-        ):  # { # if this tag name is a single tag type (either in the list or has a closing /)
+        ):  # if this tag name is a single tag type (either in the list or has a closing /)
 
             #  if you hit an else case, reset the indent level if you are inside an:
             #  'if', 'unless', or 'each' block.
@@ -826,7 +826,7 @@ class Beautifier:
 
                 self._calcluate_parent_multiline(printer, parser_token)
 
-        elif parser_token.is_end_tag:  # { # this tag is a double tag so check for tag-ending
+        elif parser_token.is_end_tag:  # this tag is a double tag so check for tag-ending
             do_end_expand = False
 
             #  deciding whether a block is multiline should not be this hard
@@ -975,4 +975,3 @@ class Beautifier:
         parser_token.parent = self._tag_stack.get_parser_token()
 
         return result
-

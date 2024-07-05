@@ -22,6 +22,8 @@
 # CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
+from __future__ import annotations
+
 import re
 import math
 
@@ -32,7 +34,7 @@ __all__ = ["Output"]
 
 
 class OutputLine:
-    def __init__(self, parent):
+    def __init__(self, parent: "OutputLine" | None):
         self.__parent = parent
         self.__character_count = 0
         self.__indent_count = -1
@@ -208,7 +210,7 @@ class Output:
         self.indent_size = options.indent_size
         self.wrap_line_length = options.wrap_line_length
         self.indent_empty_lines = options.indent_empty_lines
-        self.__lines = []
+        self.__lines: list[OutputLine] = []
         self.previous_line = None
         self.current_line: OutputLine | None = None
         self.next_line = OutputLine(self)
@@ -247,7 +249,7 @@ class Output:
             self.__add_outputline()
         return True
 
-    def get_code(self, eol):
+    def get_code(self, eol: str):
         self.trim(True)
 
         # handle some edge cases where the last tokens
