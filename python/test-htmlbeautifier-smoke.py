@@ -17,12 +17,12 @@ text = """
                             </div>
 
 
-</div><div>a</div><div>a</div><div>a</div><div>a</   div><      div>
+</div><div>a</div><div>a</div><div>a</div><div>a</div><div>
 
 a            <span>
 
 
-INLINE   </span>      </      div     >
+INLINE   </span>      </div     >
             </div>
 """
 
@@ -41,7 +41,7 @@ b = Beautifier(
         "unescape_strings": False,
         "jslint_happy": False,
         "end_with_newline": False,
-        "wrap_line_length": "120",
+        "wrap_line_length": "80",
         "indent_inner_html": False,
         "comma_first": False,
         "e4x": False,

@@ -415,6 +415,7 @@ class Beautifier:
 
             # make the typechecker happy (last token is always defined)
             if not last_token:
+                assert False
                 last_token = Token(text="", type="")
 
             if raw_token.type == TOKEN.TAG_OPEN or raw_token.type == TOKEN.COMMENT:
@@ -846,7 +847,7 @@ class Beautifier:
 
         else:  #  it's a start-tag
             # XXX: ?
-            parser_token.indent_content = bool(parser_token.custom_beautifier_name)
+            parser_token.indent_content = not parser_token.custom_beautifier_name
 
             if parser_token.tag_start_char == "<":
                 if parser_token.tag_name == "html":
