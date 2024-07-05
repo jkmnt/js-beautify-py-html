@@ -57,9 +57,7 @@ class TokenTypes(BaseTokenTypes):
 
 TOKEN = TokenTypes()
 
-#
-# directives_core = Directives(/<\!--/, /-->/);
-directives_core = Directives(r"<\!--", r"/-->")
+directives_core = Directives(r"<!--", r"-->")
 
 
 @dataclass
