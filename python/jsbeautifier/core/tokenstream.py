@@ -22,8 +22,8 @@
 # CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
-import re
-from ..core.inputscanner import InputScanner
+from __future__ import annotations
+
 from ..core.token import Token
 
 

@@ -1,8 +1,7 @@
-# /*
 #
 #   The MIT License (MIT)
 #
-#   Copyright (c) 2007-2018 Einar Lielmanis, Liam Newman, and contributors.
+#   Copyright (c) 2007-2024 Einar Lielmanis, Liam Newman, and contributors.
 #
 #   Permission is hereby granted, free of charge, to any person
 #   obtaining a copy of this software and associated documentation files
@@ -23,17 +22,16 @@
 #   ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 #   CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 #   SOFTWARE.
-# */
+#
 
+from __future__ import annotations
 
-from dataclasses import dataclass
 import re
+from dataclasses import dataclass
 
-from ..core.inputscanner import InputScanner
 from ..core.tokenizer import Token
 from ..core.tokenizer import TokenTypes as BaseTokenTypes
 from ..core.tokenizer import Tokenizer as BaseTokenizer
-from ..core.tokenizer import TokenizerPatterns as BaseTokenizerPatterns
 from ..core.directives import Directives
 
 from ..core.pattern import Pattern
@@ -346,9 +344,7 @@ class Tokenizer(BaseTokenizer):
             # ^^ empty tag has no content
             tag_name = previous_token.opened.text[1:].lower()
             if self._is_content_unformatted(tag_name):
-                # XXX: RE: resulting_string = this._input.readUntil(new RegExp('</' + tag_name + '[\\n\\r\\t ]*?>', 'ig'));
                 resulting_string = self._input.readUntil(re.compile(rf"</{ tag_name }[\n\r\t ]*?>", re.IGNORECASE))
-
         if resulting_string:
             return self._create_token(TOKEN.TEXT, resulting_string)
 
@@ -369,7 +365,6 @@ class Tokenizer(BaseTokenizer):
                 if token:
                     token.type = TOKEN.TEXT
                     return token
-                # XXX: RE: resulting_string = self._input.readUntil(new RegExp('</' + tag_name + '[\\n\\r\\t ]*?>', 'ig'));
                 resulting_string = self._input.readUntil(re.compile(rf"</{ tag_name }[\n\r\t ]*?>", re.IGNORECASE))
                 if resulting_string:
                     return self._create_token(TOKEN.TEXT, resulting_string)

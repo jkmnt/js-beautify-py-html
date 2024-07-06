@@ -1,9 +1,7 @@
-# /*jshint node:true */
-# /*
 #
 #   The MIT License (MIT)
 #
-#   Copyright (c) 2007-2018 Einar Lielmanis, Liam Newman, and contributors.
+#   Copyright (c) 2007-2024 Einar Lielmanis, Liam Newman, and contributors.
 #
 #   Permission is hereby granted, free of charge, to any person
 #   obtaining a copy of this software and associated documentation files
@@ -24,24 +22,39 @@
 #   ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 #   CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 #   SOFTWARE.
-# */
+#
 
 from __future__ import annotations
-import copy
 
 import typing as t
 
+import copy
 import re
 
 from ..core.tokenstream import TokenStream
 from ..core.output import Output
 from ..core.token import Token
 
-from .options import Options, BaseOptions
+from .options import Options
 from .tokenizer import Tokenizer, TOKEN
 
+# TODO: how the beautifiers should be deployed: as a separate packages or one bulk as in js ?
 import cssbeautifier
 import jsbeautifier
+
+try:
+    import jsbeautifier
+
+    _js_beautify = jsbeautifier.beautify
+except ImportError:
+    _js_beautify = None
+
+try:
+    import cssbeautifier
+
+    _css_beautify = cssbeautifier.beautify
+except ImportError:
+    _css_beautify = None
 
 # NOTE: moved here. in js they was near the middle of the file
 # To be used for <p> tag special case:
@@ -302,11 +315,9 @@ class TagOpenParserToken:
             self.text = raw_token.text
 
             if self.tag_start_char == "<":
-                # XXX: RE: tag_check_match = raw_token.text.match(r"^<([^\s>]*)")
                 tag_check_match = re.search(r"^<([^\s>]*)", raw_token.text)
                 self.tag_check = tag_check_match.group(1) if tag_check_match else ""
             else:
-                # XXX: RE: tag_check_match = raw_token.text.match(r"^{{~?(?:[\^]|#\*?)?([^\s}]+)")
                 tag_check_match = re.search(r"^{{~?(?:[\^]|#\*?)?([^\s}]+)", raw_token.text)
                 self.tag_check = tag_check_match.group(1) if tag_check_match else ""
 
@@ -347,21 +358,17 @@ class TagOpenParserToken:
 
 
 class Beautifier:
-    def __init__(
-        self, source_text: str, options: t.Mapping[str, t.Any] | None = None, js_beautify=None, css_beautify=None
-    ):
+    def __init__(self, source_text: str, options: t.Mapping[str, t.Any] | None = None):
         # Wrapper function to invoke all the necessary constructors and deal with the output.
         self._source_text = source_text
         options = options or {}
-        self._js_beautify = js_beautify
-        self._css_beautify = css_beautify
         self._tag_stack: TagStack
 
         #  Allow the setting of language/file-type specific options
         #  with inheritance of overall settings
         # optionHtml = Options(options, "html")
 
-        # XXX: some inheritance here. Disabled for now
+        # XXX: some inheritance here. May be broken
         optionHtml = Options(options)
 
         self._options = optionHtml
@@ -567,18 +574,13 @@ class Beautifier:
             script_indent_level = 1
             pre = ""
             post = ""
-            # XXX: broken
-            # if (last_tag_token.custom_beautifier_name == 'javascript' and typeof self._js_beautify == 'function'):
+
             if last_tag_token.custom_beautifier_name == "javascript":
-                _beautifier = jsbeautifier.beautify
-            # XXX: broken too
-            # elif (last_tag_token.custom_beautifier_name == 'css' and typeof self._css_beautify == 'function'):
+                _beautifier = _js_beautify
             elif last_tag_token.custom_beautifier_name == "css":
-                _beautifier = cssbeautifier.beautify
+                _beautifier = _css_beautify
             elif last_tag_token.custom_beautifier_name == "html":
-                _beautifier = lambda html_source, options: Beautifier(
-                    html_source, options, self._js_beautify, self._css_beautify
-                ).beautify()
+                _beautifier = beautify
             else:
                 _beautifier = None
 
@@ -597,10 +599,8 @@ class Beautifier:
             if (
                 last_tag_token.custom_beautifier_name != "html"
                 and text[0:1] == "<"
-                # XXX:RE and text.match(r"^(<!--|<!\[CDATA\[)")
                 and re.search(r"^(<!--|<!\[CDATA\[)", text)
             ):
-                # XXX:RE: matched = r"^(<!--[^\n]*|<!\[CDATA\[)(\n?)([ \t\n]*)([\s\S]*)(-->|]]>)$".exec(text)
                 matched = re.search(r"^(<!--[^\n]*|<!\[CDATA\[)(\n?)([ \t\n]*)([\s\S]*)(-->|]]>)$", text)
 
                 #  if we start to wrap but don't finish, print raw
@@ -620,32 +620,20 @@ class Beautifier:
                 if matched.group(2) or "\n" in matched.group(3):
                     #  if the first line of the non-comment text has spaces
                     #  use that as the basis for indenting in null case.
-                    # XXX: RE matched = matched[3].match(r"[ \t]+$")
                     matched = re.search(r"[ \t]+$", matched.group(3))
                     if matched:
                         raw_token.whitespace_before = matched.group(0)
 
             if text:
                 if _beautifier:
-                    opts = copy.deepcopy(self._options.raw_options)
+                    opts: t.Any = copy.deepcopy(self._options.raw_options)
                     opts.eol = "\n"
                     text = _beautifier(indentation + text, opts)
-
-                    #  call the Beautifier if avaliable
-                    # Child_options = function() {
-                    #   self.eol = '\n';
-
-                    # Child_options.prototype = self._options.raw_options;
-                    # child_options = new Child_options();
-                    # text = _beautifier(indentation + text, child_options);
                 else:
                     #  simply indent the string otherwise
                     white = raw_token.whitespace_before
                     if white:
-                        # XXX: RE: text = text.replace(RegExp("\n(" + white + ")?", "g"), "\n")
                         text = re.sub(rf"\n({ white })?", "\n", text)
-
-                    # XXX: # text = indentation + text.replace(r"\n"g, '\n' + indentation);
                     text = indentation + text.replace("\n", "\n" + indentation)
 
             if pre:
@@ -943,6 +931,5 @@ class Beautifier:
         return result
 
 
-# XXX: JSUT
 def beautify(input: str | None, options: t.Mapping[str, t.Any] | None = None):
     return Beautifier(input or "", options).beautify()
