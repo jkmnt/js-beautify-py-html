@@ -43,9 +43,8 @@ function generate_tests() {
   // css
   generate_test_files('css', 't', 'js/test/generated/beautify-css-tests.js', 'python/cssbeautifier/tests/generated/tests.py');
 
-  // html
-  // no python html beautifier, so no tests
-  generate_test_files('html', 'bth', 'js/test/generated/beautify-html-tests.js');
+  // html  
+  generate_test_files('html', 'bth', 'js/test/generated/beautify-html-tests.js', 'python/jsbeautifier/tests/generated/testhtml.py');
 }
 
 function generate_test_files(data_folder, test_method, node_output, python_output) {
